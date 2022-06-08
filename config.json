@@ -1,0 +1,173 @@
+{
+	"servername": "http://lsagis.com",
+	"proxyURL": "serverIP/arcgisproxy/proxy.ashx",
+	"baseURL": "servername/server/rest/services",
+	"gsvcURL": "baseURL/Utilities/Geometry/GeometryServer",
+	"txdurl": "serverIP/arcgisproxy/proxy.ashx?https://txd.vaisala.com/txd100/xml",
+	"locatorURL": "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer",
+	"fiURL": "serverIP/fiapi/default.aspx?",
+	"mapServerURL": "baseURL/FTT_Demo/MapServer",
+	"printServiceURL": "https://utility.arcgisonline.com/arcgis/rest/services/Utilities/PrintingTools/GPServer/Export%20Web%20Map%20Task",
+	"apiKey":"apiKey",
+	"stationLayerID": "2",
+	"lineLayerID": "8",
+	"structureLayerID": "0",
+	"switchLayerID": "1",
+	"fiLayerID": "1",
+	"maxRecordCount": "1000",
+	"faultLocID": "0",
+	"ltgPopuptitle": "Lightning: {id}",
+	"ltgPopupFields": [{
+			"fieldName": "time",
+			"label": "Time:"
+		},
+		{
+			"fieldName": "signal",
+			"label": "Signal (kA)"
+		},
+		{
+			"fieldName": "lat",
+			"label": "Latitude"
+		},
+		{
+			"fieldName": "lon",
+			"label": "Longitude"
+		},
+		{
+			"fieldName": "smin",
+			"label": "Semi Minor Axis (m):"
+		},
+		{
+			"fieldName": "smaj",
+			"label": "Semi Major Axis (m):"
+		},
+		{
+			"fieldName": "angle",
+			"label": "Ellipse Angle (rad):"
+		}
+	],
+	"fiEnabled":true,
+	"fiTimeZone": "America/New_York",
+	"fiInfotitle": "Fault Indicator: {TITLE}",
+	"fiPrimaryKey": "LINE_ID",
+	"fiFields": [{
+			"fieldName": "TITLE",
+			"label": "Title: ",
+			"forDisplay": false,
+			"isStatusFeature": false
+		},
+		{
+			"fieldName": "OP",
+			"label": "Operational: ",
+			"forDisplay": false,
+			"isStatusFeature": true
+		},
+		{
+			"fieldName": "SCADA_P1",
+			"label": "SCADA P1: ",
+			"forDisplay": true,
+			"isStatusFeature": false
+		},
+		{
+			"fieldName": "SCADA_P2",
+			"label": "SCADA P2: ",
+			"forDisplay": true,
+			"isStatusFeature": false
+		},
+		{
+			"fieldName": "SCADA_P3",
+			"label": "SCADA P3: ",
+			"forDisplay": true,
+			"isStatusFeature": false
+		},
+		{
+			"fieldName": "SCADA_HEALTH",
+			"label": "SCADA Health: ",
+			"forDisplay": true,
+			"isStatusFeature": false
+		},
+		{
+			"fieldName": "SCADA_LINE",
+			"label": "SCADA Line: ",
+			"forDisplay": true,
+			"isStatusFeature": false
+		},
+		{
+			"fieldName": "SCADA_LOAD",
+			"label": "SCADA Load: ",
+			"forDisplay": true,
+			"isStatusFeature": false
+		}
+	],
+	"switchEnabled":true,
+	"switchPrimaryKey":"ITS_TL_ID",
+	"txduid": "uid",
+	"txdpwd": "pwd",
+	"txdenabled":true,
+	"lineFields": [
+		{
+			"name": "ITS_NAME",
+			"isTitle": true,
+			"key": false,
+			"isAttribute": true,
+			"outfield": true
+		},
+		{
+			"name": "ITS_ID",
+			"isTitle": false,
+			"key": true,
+			"isAttribute": true,
+			"outfield": true
+		}
+
+	],
+	"stationFields": [
+		{
+			"name": "NAME",
+			"isTitle": true,
+			"isAttribute": true,
+			"outfield": true
+		},
+		{
+			"name": "ITS_ID",
+			"key": true,
+			"isAttribute": true,
+			"outfield": true
+		},
+		{
+			"name": "latitude",
+			"isAttribute": false,
+			"outfield": true
+		},
+		{
+			"name": "longitude",
+			"isAttribute": false,
+			"outfield":true
+		}
+	],
+	"structureFields": [
+		{
+			"name": "structno",
+			"isAttribute":true,
+			"isTitle": true,
+			"outfield":true
+		},
+		{
+			"name": "objectid",
+			"isAttribute": false,
+			"outfield": false
+		},
+		{
+			"name": "owner",
+			"isAttribute": true,
+			"outfield": true
+		},
+		{
+			"name": "lineids",
+			"isAttribute": false,
+			"outfield":true,
+			"key": true
+		}
+	],
+	"timezone": "America/Chicago"
+}
