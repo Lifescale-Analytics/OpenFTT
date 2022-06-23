@@ -110,14 +110,16 @@
 			"isTitle": true,
 			"key": false,
 			"isAttribute": true,
-			"outfield": true
+			"outfield": true,
+			"orderby": true
 		},
 		{
 			"name": "ITS_ID",
 			"isTitle": false,
 			"key": true,
 			"isAttribute": true,
-			"outfield": true
+			"outfield": true,
+			"orderby" : false
 		}
 
 	],

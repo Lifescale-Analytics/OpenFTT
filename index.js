@@ -126,6 +126,7 @@ require([
   var lineFields = data.lineFields;
   var lineOutFields = lineFields.filter((f) => f.outfield).map((f) => f.name);
   var lineKeyField = lineFields.filter((f) => f.key).map((f) => f.name)[0];
+  var lineSortFields = lineFields.filter((f) => f.orderby).map((f) => f.name);
   var fltStructureFields = data.structureFields;
   var structureKeyField = fltStructureFields
     .filter((f) => f.key)
@@ -1351,9 +1352,12 @@ require([
 
   function populateLineDropDown(showLoader = false) {
     lineLayer.definitionExpression = "1=1";
-    lineLayer.createFeatureLayer().then(function (lineFeatureLayer) {
+	lineLayer.createFeatureLayer().then(function (lineFeatureLayer){
       var query = lineFeatureLayer.createQuery();
+	  query.orderByFields = lineSortFields;
       query.outFields = lineOutFields;
+	  query.returnGeometry=false;
+	  query.returnDistinctValues=true;
 
       lineFeatureLayer
         .queryFeatureCount()
