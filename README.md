@@ -13,7 +13,7 @@ Vaisala TXD-100 API Subscription (optional, but required for lightning studies)
 # Installation
 Copy the contents of the repository to the web server.
 
-# Configruation
+# Configuration
 Modify config.json file.  The config.json file is populated with some defaults.
 
 The proxyURL is the URL of the ESRI resource proxy.
