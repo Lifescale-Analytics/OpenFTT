@@ -112,7 +112,9 @@ require([
   var txduid = data.txduid;
   var txdpwd = data.txdpwd;
   var txdenabled = data.txdenabled;
-
+  var mapSpatialReference = parseInt(data.mapSpatialReference);
+  var bufferSpatialReference = parseInt(data.bufferSpatialReference);
+  var lightningSpatialReference = parseInt(data.lightningSpatialReference);
   var faultLocID = parseInt(data.faultLocID);
   var stationLayerID = parseInt(data.stationLayerID);
   var lineLayerID = parseInt(data.lineLayerID);
@@ -248,9 +250,9 @@ require([
   var ltgSymbol = {
     type: "picture-marker",
     url: "resources/ltg2.png",
-    width: 130,
+    width: 170,
     height: 20,
-    xoffset: 55,
+    xoffset: 75,
     angle: 0,
   };
 
@@ -456,13 +458,13 @@ require([
     var output = "";
     output += "<B>Via Line: " + lname + "</B><BR />";
 
-    //var strPt = new Point(feature.graphic.attributes.LONGITUDE, feature.graphic.attributes.LATITUDE,{wkid: 4326});
+    //var strPt = new Point(feature.graphic.attributes.LONGITUDE, feature.graphic.attributes.LATITUDE,{wkid: mapSpatialReference});
     var poi = new Point(
       {
         longitude: feature.graphic.geometry.longitude,
         latitude: feature.graphic.geometry.latitude,
       },
-      { wkid: 4326 }
+      { wkid: mapSpatialReference }
     );
 
     //identify the line vertex with the smallest distance from structure
@@ -471,7 +473,7 @@ require([
     for (i = 0; i < lineGeometries.length; i++) {
       var newline = new Polyline({
         paths: lineGeometries[i].paths,
-        wkid: 4326,
+        wkid: mapSpatialReference,
       });
       var nve = geometryEngine.nearestVertex(newline, poi);
       if (nve.distance < smallestvoiddist) {
@@ -506,9 +508,9 @@ require([
       var stationPoint = new Point({
         longitude: stationList[i].longitude,
         latitude: stationList[i].latitude,
-        wkid: 4326,
+        wkid: mapSpatialReference,
       });
-      var seg = new Polyline({ wkid: 4326 });
+      var seg = new Polyline({ wkid: mapSpatialReference });
       seg.addPath([poi, stationPoint]);
       var segLength = geometryEngine.geodesicLength(seg, "miles");
       var out = segLength.toFixed(2) + " to " + stationList[i].name + "<br />";
@@ -520,7 +522,7 @@ require([
   function distToStation(vertexOfInterest) {
     var outputDist = [];
     var pointOfInterest = new Point(vertexOfInterest.coordinate, {
-      wkid: 4326,
+      wkid: mapSpatialReference,
     });
     var segLength = [];
 
@@ -529,7 +531,7 @@ require([
       var stationPoint = new Point({
         longitude: stationList[i].longitude,
         latitude: stationList[i].latitude,
-        wkid: 4326,
+        wkid: mapSpatialReference,
       });
 
       var stationPoints = [];
@@ -601,20 +603,20 @@ require([
     //only look for faults within the line length
     //loop through topology, accumulating distances
     var startPt = new Point(startInfo.startPoint[0], startInfo.startPoint[1], {
-      wkid: 4326,
+      wkid: mapSpatialReference,
     });
 
     curPt = startPt;
     for (let t in topology) {
       var pCoords = lineGeometry[topology[t]].paths[0][0];
-      nextPt = new Point(pCoords[0], pCoords[1], { wkid: 4326 });
+      nextPt = new Point(pCoords[0], pCoords[1], { wkid: mapSpatialReference });
 
       //determine direction of segment, ignore start
       if (isReversed(curPt, nextPt)) {
         //reverse the paths within this segment.
         lineGeometry[topology[t]].paths[0].reverse();
         var pCoords = lineGeometry[topology[t]].paths[0][0];
-        nextPt = new Point(pCoords[0], pCoords[1], { wkid: 4326 });
+        nextPt = new Point(pCoords[0], pCoords[1], { wkid: mapSpatialReference });
         //if other endpoint still doesn't match, then throw away this path
         if (isReversed(curPt, nextPt)) {
           return 0;
@@ -624,9 +626,9 @@ require([
 
       for (var i = 0; i <= lenPaths; i++) {
         var pathcoords = lineGeometry[topology[t]].paths[0][i];
-        nextPt = new Point(pathcoords[0], pathcoords[1], { wkid: 4326 });
+        nextPt = new Point(pathcoords[0], pathcoords[1], { wkid: mapSpatialReference });
         if (curPt) {
-          var seg = new Polyline({ wkid: 4326 });
+          var seg = new Polyline({ wkid: mapSpatialReference });
           seg.addPath([curPt, nextPt]);
           var segLength = geometryEngine.geodesicLength(seg, "miles");
           totalLength += segLength;
@@ -836,7 +838,7 @@ require([
     var ltgPOI = new Point({
       latitude: lat.value,
       longitude: lon.value,
-      spatialReference: { wkid: 4326 },
+      spatialReference: { wkid: mapSpatialReference },
     });
 
     ltg = new Graphic({
@@ -852,8 +854,8 @@ require([
       geodesic: true,
       unionResults: true,
       geometries: ltgPOI,
-      bufferSpatialReference: 4296,
-      outSpatialReference: 102100,
+      bufferSpatialReference: bufferSpatialReference,
+      outSpatialReference: mapSpatialReference,
     });
 
     var poi = gsvc.buffer(params).then(function (poiPoints) {
@@ -963,14 +965,14 @@ require([
       showAlert && alert("Please enter a valid Date/Time");
       return false;
     }
-    /*
+	/*
     var lat = document.getElementById("ltgLat");
     var lon = document.getElementById("ltgLon");
     if (lat.value == "" || lon.value == "") {
       showAlert && alert("Please enter a valid address!");
       return false;
     }
-    */
+	*/
     return true;
   }
 
@@ -1027,7 +1029,7 @@ require([
       padding: {
         right: 400,
       },
-      spatialReference: 4326,
+      spatialReference: mapSpatialReference,
     },
   });
 
@@ -1431,8 +1433,8 @@ require([
       geodesic: true,
       geometries: lineGeometries,
       unionResults: true,
-      bufferSpatialReference: 4296,
-      outSpatialReference: 102100,
+      bufferSpatialReference: bufferSpatialReference,
+      outSpatialReference: mapSpatialReference,
     });
 
     gsvc.buffer(params).then(function (lineBuffers) {
@@ -1948,7 +1950,7 @@ require([
 
       var end1pl = new Polyline({
         paths: path1,
-        spatialReference: { wkid: 4326 }, ///anything would be WGS84
+        spatialReference: { wkid: mapSpatialReference }, ///anything would be WGS84
       });
 
       //end 2
@@ -1959,7 +1961,7 @@ require([
 
       var end2pl = new Polyline({
         paths: path2,
-        spatialReference: { wkid: 4326 },
+        spatialReference: { wkid: mapSpatialReference },
       });
 
       dist1 = geometryEngine.geodesicLength(end1pl, "feet");
@@ -2035,20 +2037,20 @@ require([
     //only look for faults within the line length
     //loop through topology, accumulating distances
     var startPt = new Point(startInfo.startPoint[0], startInfo.startPoint[1], {
-      wkid: 4326,
+      wkid: mapSpatialReference,
     });
 
     curPt = startPt;
     for (let t in topology) {
       var pCoords = lineGeometry[topology[t]].paths[0][0];
-      nextPt = new Point(pCoords[0], pCoords[1], { wkid: 4326 });
+      nextPt = new Point(pCoords[0], pCoords[1], { wkid: mapSpatialReference });
 
       //determine direction of segment, ignore start
       if (isReversed(curPt, nextPt)) {
         //reverse the paths within this segment.
         lineGeometry[topology[t]].paths[0].reverse();
         var pCoords = lineGeometry[topology[t]].paths[0][0];
-        nextPt = new Point(pCoords[0], pCoords[1], { wkid: 4326 });
+        nextPt = new Point(pCoords[0], pCoords[1], { wkid: mapSpatialReference });
         //if other endpoint still doesn't match, then throw away this path
         if (isReversed(curPt, nextPt)) {
           return coords;
@@ -2058,9 +2060,9 @@ require([
 
       for (var i = 0; i <= lenPaths; i++) {
         var pathcoords = lineGeometry[topology[t]].paths[0][i];
-        nextPt = new Point(pathcoords[0], pathcoords[1], { wkid: 4326 });
+        nextPt = new Point(pathcoords[0], pathcoords[1], { wkid: mapSpatialReference });
         if (curPt) {
-          var seg = new Polyline({ wkid: 4326 });
+          var seg = new Polyline({ wkid: mapSpatialReference });
           seg.addPath([curPt, nextPt]);
           var segLength = geometryEngine.geodesicLength(seg, "miles");
           totalLength += segLength;
@@ -2090,7 +2092,7 @@ require([
 
     for (pt in faultCoords) {
       var newpt = new Point(faultCoords[pt][0][0], faultCoords[pt][0][1], {
-        wkid: 4326,
+        wkid: mapSpatialReference,
       });
 
       ft = new Graphic({
@@ -2111,8 +2113,8 @@ require([
       geodesic: true,
       unionResults: true,
       geometries: faultPoints,
-      bufferSpatialReference: 4296,
-      outSpatialReference: 102100, //needs to be double checked the spatial reference 3/15/2022
+      bufferSpatialReference: bufferSpatialReference,
+      outSpatialReference: mapSpatialReference, //needs to be double checked the spatial reference 3/15/2022
     });
 
     var nearestStructures = gsvc.buffer(params).then(function (faultPoints) {
@@ -2203,8 +2205,8 @@ require([
         geodesic: true,
         geometries: lineGeometries,
         unionResults: true,
-        bufferSpatialReference: 4296,
-        outSpatialReference: 3857,
+        bufferSpatialReference: bufferSpatialReference,
+        outSpatialReference: lightningSpatialReference,
       });
 
       gsvc
@@ -2543,7 +2545,7 @@ require([
 
     for (pt in ltgPoints) {
       var ltgpoint = new Point(ltgPoints[pt]["lon"], ltgPoints[pt]["lat"], {
-        wkid: 4326,
+        wkid: mapSpatialReference,
       });
       var ltgattr = ltgPoints[pt];
 
@@ -2586,7 +2588,7 @@ require([
           ltgPoints[pt]["smin"],
           ltgPoints[pt]["angle"]
         ),
-        spatialReference: { wkid: 4326 },
+        spatialReference: { wkid: mapSpatialReference },
       };
 
       var polygonEllipseGraphic = new Graphic({
