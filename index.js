@@ -1205,6 +1205,16 @@ require([
       return lineGeometries;
     }
   }
+ 
+  function compToHex(c){
+	var hex= c.toString(16);
+	return hex.length ==1?"0" + hex:hex;
+  }
+ 
+  function color2hex(color){
+		colors=color.replace("rgb","").replace("(","").replace(")","").replaceAll(" ","").split(",");
+		return "#" + compToHex(parseInt(colors[0])) + compToHex(parseInt(colors[1])) + compToHex(parseInt(colors[2]));
+  }
 
   function getOutput() {
     //build in 3 second delay to allow zoom to finish
@@ -1219,70 +1229,64 @@ require([
         canvas.width = imageData.width;
 
         //add screenshot to canvas
+		let hdrfont = "bold 12px Arial";
+		let nfont = "12px Arial";
+		
         context.putImageData(imageData, 0, 0);
         context.font = "12px Arial";
-        context.fillStyle = "#fff";
-
-        let canvasheight = 135 + 15 * ltgPoints.length;
+        context.fillStyle = "#ffffff";
+	
+		var stninfo = document.getElementById("resultstbl");
+		var ltginfo = document.getElementById("resultstblltg");
+		
+		
+		
+        let canvasheight = 75 + 15 * (ltginfo.tBodies[0].rows.length + stninfo.tBodies[0].rows.length + ltginfo.tBodies[0].rows.length); //add rows for the number of structures/stationsj j+ ltgPoints)
         context.fillRect(canvas.width - 300, 0, 300, canvasheight);
         context.fillStyle = "#000";
-        const leftmargin = imageData.width - 280;
+        const leftmargin = imageData.width - 295;
+		const lineheight = 15;
+		var curLine = 15;
         let eventTime = document.getElementById("evttime").value;
-        context.fillText("Event Time: " + eventTime, leftmargin, 15);
+        context.fillText("Event Time: " + eventTime, leftmargin, curLine);
         let lineID = document.getElementById("lineSelect");
         lineID = lineID.options[lineID.selectedIndex].text;
-        context.fillText("Line ID: " + lineID, leftmargin, 30);
-        let stationName = document.getElementById("stationSelect");
-        context.fillText(
-          "Station: " + stationName.options[stationName.selectedIndex].text,
-          leftmargin,
-          45
-        );
-        let distance = document.getElementById("faultDistance").value;
-        context.fillText("Distance: " + distance, leftmargin, 60);
-
-        //populate fault info
-        let flt = "Nearest Structure\n";
-        context.fillText(flt, leftmargin, 75);
-        flt = "Structure(s):  ";
-
-        if (typeof fltVals != "undefined") {
-          for (let i = 0; i < fltVals.length; i++) {
-            flt += fltVals[i] + ", ";
-          }
-          context.fillText(flt.slice(0, -2), leftmargin, 90);
-        } else {
-          context.fillText("No fault coordinates found", leftmargin, 90);
-        }
-
-        //populate ltg info
-        flt = "Nearest Lightning\n";
-        context.fillText(flt, leftmargin, 105);
-        flt = "ID, Time, Signal (kA), Lat, Lon";
-        context.fillText(flt, leftmargin, 120);
-
-        for (pt in ltgPoints) {
-          if (ltgPoints[pt]["lat"].toString().length > 0) {
-            var lat = ltgPoints[pt]["lat"].toFixed(5);
-          } else {
-            lat = "";
-          }
-          if (ltgPoints[pt]["lon"].toString().length > 0) {
-            var lon = ltgPoints[pt]["lon"].toFixed(5);
-          } else {
-            lon = "";
-          }
-          flt =
-            ltgPoints[pt]["id"] +
-            ", " +
-            ltgPoints[pt]["time"] +
-            ", " +
-            ltgPoints[pt]["signal"] +
-            ", " +
-            lat +
-            ", " +
-            lon;
-          context.fillText(flt, leftmargin, 135 + 15 * pt);
+		curLine+=lineheight;
+        context.fillText("Line ID: " + lineID, leftmargin, curLine);
+		
+		//get Structure info
+		context.font = hdrfont;
+		curLine +=lineheight;
+		context.fillText("Nearest Structure(s):",leftmargin, curLine);
+		context.font = nfont;
+		hdr = Array.from(stninfo.tHead.rows[0].cells).map(c=> c.innerText).toString();
+		curLine+=lineheight;
+		context.fillText(hdr,leftmargin,curLine);
+		for(i=0;i<stninfo.tBodies[0].rows.length;i++){
+				curLine+=lineheight;
+				color = color2hex(stninfo.tBodies[0].rows[i].cells[0].childNodes[0].style.color.toString());
+				context.fillStyle = color;
+				curRow = Array.from(stninfo.tBodies[0].rows[i].cells).map(c=> c.innerText).toString();
+				context.fillText(curRow,leftmargin,curLine);
+		}
+		
+		
+		//populate ltg info
+		curLine +=lineheight;
+		context.fillStyle = "#000000";
+		context.font=hdrfont;
+        flt = "Nearest Lightning";
+        context.fillText(flt, leftmargin, curLine);
+		context.font=nfont;
+		curLine +=lineheight;
+		flt = Array.from(ltginfo.tHead.rows[0].cells).map(c=> c.innerText).toString();
+		context.fillText(flt, leftmargin, curLine);
+		context.fillStyle = "#000000";
+		
+        for (i=0;i<ltginfo.tBodies[0].rows.length;i++) {
+		  curLine +=lineheight;
+		  flt = Array.from(ltginfo.tBodies[0].rows[i].cells).map(c=>c.innerText).toString();
+          context.fillText(flt, leftmargin, curLine);
         }
 
         const dataUrl = canvas.toDataURL();
@@ -2575,8 +2579,8 @@ require([
       id.innerHTML = ltgPoints[pt]["id"];
       tim.innerHTML = ltgPoints[pt]["time"];
       sig.innerHTML = ltgPoints[pt]["signal"];
-      lat.innerHTML = ltgPoints[pt]["lat"];
-      lon.innerHTML = ltgPoints[pt]["lon"];
+      lat.innerHTML = ltgPoints[pt]["lat"].toFixed(4);
+      lon.innerHTML = ltgPoints[pt]["lon"].toFixed(4);
 
       //replace to the following with the relavent data in ltgPoints
       var polygonEllipse = {
