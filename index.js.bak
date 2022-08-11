@@ -106,7 +106,7 @@ require([
   var stationLayerID = data.stationLayerID;
   var structureLayerID = data.structureLayerID;
   var fiLayerID = data.fiLayerID;
-  var initialExtent = JSON.parse(data.initialExtent);
+  var initialExtent = data.initialExtent;
   var maxRecordCount = data.maxRecordCount;
   var ltgPopuptitle = data.ltgPopuptitle;
   var fiInfotitle = data.fiInfotitle;
@@ -910,21 +910,13 @@ require([
       if (lineID.length > 0) {
         //highlight line
         lineGeometries = setLineDefinitionExpression(lineID)
-          .then(function(lineInfo){
-			
-			//highlight structures if using proximity
-			if(useStructureProximity){
-				structureGeometries = setStructureDefinitionExpression(lineInfo);
-			}
-            return populateStationDropDown(lineInfo);
+          .then(function(){
+            populateStationDropDown();
+            //highlight structures
+            structureGeometries = setStructureDefinitionExpression(lineID);
+
           }
         );
-		
-		//highlight structures if using key
-		if(!useStructureProximity){
-			structureGeometries = setStructureDefinitionExpression(lineID);
-		}
-		  
         //get fault indicators
         getFaultIndicators(lineID);
 
@@ -1201,25 +1193,15 @@ require([
     if (defaultLineId != "") {
       lineSelect.value = defaultLineId;
       lineGeometries = setLineDefinitionExpression(defaultLineId)
-        .then(function(lineInfo){
-
-          //highlight structures if using proximity
-		  if(useStructureProximity){
-			structureGeometries = setStructureDefinitionExpression(lineInfo);
-		  }
-		  
-		  //get stations
-          return populateStationDropDown(lineInfo);
+        .then(function(){
+          populateStationDropDown()
+          structureGeometries = setStructureDefinitionExpression(defaultLineId);
+          //highlight structures
+          //highlights fault inidicators
+          getFaultIndicators(defaultLineId);
 
         }
       );
-	  
-	  //highlight structures if using key
-	  if(!useStructureProximity){
-		structureGeometries = setStructureDefinitionExpression(defaultLineId);
-	  }
-      //highlights fault indicators
-      getFaultIndicators(defaultLineId);
       return lineGeometries;
     }
   }
@@ -1472,12 +1454,9 @@ require([
   }
 
   function setStructureDefinitionExpression(lineID) {
-    //if the structure layer uses lineids for filtering, if not use proximity
-	if(!useStructureProximity) { 
+    if(!useStructureProximity) { 
+      //if the structure layer uses lineids for filtering, if not use proximity
       structureLayer.definitionExpression = `${structureKeyField} = '${lineID}'`;
-	  if (!structureLayer.visible) {
-		structureLayer.visible = true;
-      }
       return queryForStructureGeometries();
     } else {
       //buffer line geometries.
@@ -1485,17 +1464,16 @@ require([
         distances: [`${structureProximityFt}`] ,
         unit: "feet",
         geodesic: true,
-        geometries: lineID,
+        geometries: lineGeometries,
         unionResults: true,
         bufferSpatialReference: bufferSpatialReference,
         outSpatialReference: mapSpatialReference,
       });
 
-      return gsvc.buffer(params).then(function (lineBuffers){
+      gsvc.buffer(params).then(function (lineBuffers){
         lineBuffer = lineBuffers[0];
         return queryForStructuresByProx(lineBuffer)
-			   .then(getUniqueValues)
-               .then(setStructureDefByProx);
+               .then(queryForStructureGeometries);
 
       });
 
@@ -1504,40 +1482,31 @@ require([
   
   }
 
-  function setStructureDefByProx(values){
-	var defExpr="";
-	values.forEach(function(value) {
-		defExpr += `${structureKeyField} = '${value}' OR `;
-	});
-	defExpr = defExpr.substring(0,defExpr.length -4);
-	structureLayer.definitionExpression = defExpr;	  
-	if (!structureLayer.visible) {
-		structureLayer.visible = true;
-    }
-	return queryForStructureGeometries();
-  }
-
   function queryForStructuresByProx(linebuffer){
     var query = structureLayer.createQuery();
     query.geometry =linebuffer;
-    query.outFields=structureKeyField;
-    query.spatialRelationship = "intersects";
+    query.outFields=`'${structureKeyField}'`;
+    query.spatialRelationship = "contains";
     return structureLayer.queryFeatures(query).then(function (response){
       var features=response.features;
-
       var values = features.map(function (feature){
-		return feature.attributes[structureKeyField];
-      });
-	  return values;
+        return feature.attribute[0];
+      })
+      defExpr=`${structureKeyField} IN (` + values.join(",") + ")";
+      structureLayer.definitionExpression = defExp;
+
     });
   }
 
   function queryForStructureGeometries() {
+    if (!structureLayer.visible) {
+      structureLayer.visible = true;
+    }  
     var structureQuery = structureLayer.createQuery();
     return structureLayer
       .queryFeatures(structureQuery)
       .then(function (response) {
-        //structureDefExpr = "";
+        structureDefExpr = "";
         structureGeometries = response.features.map(function (feature) {
           return feature.geometry;
         });
@@ -2440,24 +2409,47 @@ require([
       for (i = 0; i < r.length; i++) {
         //get details
         if (maxDiff > 0) {
-          var curdatetime = r[i].getElementsByTagName("date")[0].childNodes[0].nodeValue + " " + r[i].getElementsByTagName("time")[0].childNodes[0].nodeValue;
-          var lTime = moment.tz(curdatetime,"MMM DD, YYYY HH:mm:ss:SSS","GMT");
-          var curTime = lTime.clone().tz(timezone).format("MM/DD/YYYY HH:mm:ss.SSS");
+          var curdatetime =
+            r[i].getElementsByTagName("date")[0].childNodes[0].nodeValue +
+            " " +
+            r[i].getElementsByTagName("time")[0].childNodes[0].nodeValue;
+          var lTime = moment.tz(
+            curdatetime,
+            "MMM DD, YYYY HH:mm:ss:SSS",
+            "GMT"
+          );
+          var curTime = lTime.clone().tz(timezone).format("HH:mm:ss.SSS");
           var curSecs = curTime.split(":")[2];
           if (Math.abs(curSecs - secs) < maxDiff) {
-            var curlat = parseFloat(r[i].getElementsByTagName("lat")[0].childNodes[0].nodeValue);
-            var curlon = parseFloat(r[i].getElementsByTagName("lon")[0].childNodes[0].nodeValue);
-            var curSig = parseFloat(r[i].getElementsByTagName("signal")[0].childNodes[0].nodeValue).toFixed(2);
-            var semimajor = parseFloat(r[i].getElementsByTagName("semi-major-axis")[0].childNodes[0].nodeValue);
-            var semiminor = parseFloat(r[i].getElementsByTagName("semi-minor-axis")[0].childNodes[0].nodeValue);
-            var angle_rad = parseFloat(r[i].getElementsByTagName("angle")[0].childNodes[0].nodeValue);
-			
+            var curlat = parseFloat(
+              r[i].getElementsByTagName("lat")[0].childNodes[0].nodeValue
+            );
+            var curlon = parseFloat(
+              r[i].getElementsByTagName("lon")[0].childNodes[0].nodeValue
+            );
+            var curSig = parseFloat(
+              r[i].getElementsByTagName("signal")[0].childNodes[0].nodeValue
+            ).toFixed(2);
+            var semimajor = parseFloat(
+              r[i].getElementsByTagName("semi-major-axis")[0].childNodes[0]
+                .nodeValue
+            );
+            var semiminor = parseFloat(
+              r[i].getElementsByTagName("semi-minor-axis")[0].childNodes[0]
+                .nodeValue
+            );
+            var angle_rad = parseFloat(
+              r[i].getElementsByTagName("angle")[0].childNodes[0].nodeValue
+            );
+            var formattedDateTime = moment
+              .tz(lTime, "MM/DD/YYYY HH:mm:ss:SSS", timezone)
+              .format("MM/DD/YYYY HH:mm:ss.SSS");
             ltgPoints.push({
               id: j,
               lat: curlat,
               lon: curlon,
               signal: curSig,
-              time: curTime,
+              time: formattedDateTime,
               smin: semiminor,
               smaj: semimajor,
               angle: angle_rad,
@@ -2466,25 +2458,52 @@ require([
           }
         } else {
           //for data prefiltered by api
-		  //for data prefiltered by api
-		  var curdatetime = r[i].getElementsByTagName("date")[0].childNodes[0].nodeValue + " " + r[i].getElementsByTagName("time")[0].childNodes[0].nodeValue;
-		  var lTime = moment.tz(curdatetime,"MMM DD, YYYY HH:mm:ss:SSS","GMT");
-		  var curTime = lTime.clone().tz(timezone).format("MM/DD/YYYY HH:mm:ss.SSS");
+          var lTime = moment.tz(
+            r[i].getElementsByTagName("time")[0].childNodes[0].nodeValue,
+            "HH:mm:ss:SSS",
+            "GMT"
+          );
+          var curTime = lTime.clone().tz(timezone).format("HH:mm:ss.SSS");
           var curSecs = curTime.split(":")[2];
-          var semimajor = parseFloat(r[i].getElementsByTagName("semi-major-axis")[0].childNodes[0].nodeValue);
-          var semiminor = parseFloat(r[i].getElementsByTagName("semi-minor-axis")[0].childNodes[0].nodeValue);
-          var angle_rad = parseFloat(r[i].getElementsByTagName("angle")[0].childNodes[0].nodeValue);
+          var semimajor = parseFloat(
+            r[i].getElementsByTagName("semi-major-axis")[0].childNodes[0]
+              .nodeValue
+          );
+          var semiminor = parseFloat(
+            r[i].getElementsByTagName("semi-minor-axis")[0].childNodes[0]
+              .nodeValue
+          );
+          var angle_rad = parseFloat(
+            r[i].getElementsByTagName("angle")[0].childNodes[0].nodeValue
+          );
 
-          var curlat = parseFloat(r[i].getElementsByTagName("lat")[0].childNodes[0].nodeValue);
-          var curlon = parseFloat(r[i].getElementsByTagName("lon")[0].childNodes[0].nodeValue);
-          var curSig = parseFloat(r[i].getElementsByTagName("signal")[0].childNodes[0].nodeValue).toFixed(2);
+          var curlat = parseFloat(
+            r[i].getElementsByTagName("lat")[0].childNodes[0].nodeValue
+          );
+          var curlon = parseFloat(
+            r[i].getElementsByTagName("lon")[0].childNodes[0].nodeValue
+          );
+          var curSig = parseFloat(
+            r[i].getElementsByTagName("signal")[0].childNodes[0].nodeValue
+          ).toFixed(2);
+
+          var curdatetime =
+            moment(document.getElementById(starttimefield).value).format(
+              "MM/DD/yyyy"
+            ) +
+            " " +
+            curTime;
+
+          var formattedDateTime = moment
+            .tz(curdatetime, "MM/DD/YYYY HH:mm:ss:SSS", timezone)
+            .format("MM/DD/YYYY HH:mm:ss");
 
           ltgPoints.push({
             id: j,
             lat: curlat,
             lon: curlon,
             signal: curSig,
-            time: curTime,
+            time: formattedDateTime,
             smin: semiminor,
             smaj: semimajor,
             angle: angle_rad,

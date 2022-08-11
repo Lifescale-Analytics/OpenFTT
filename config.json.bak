@@ -1,5 +1,5 @@
 {
-	"servername": "https://lsagis.com",
+	"servername": "http://lsagis.com",
 	"proxyURL": "serverIP/arcgisproxy/proxy.ashx",
 	"baseURL": "servername/server/rest/services",
 	"gsvcURL": "baseURL/Utilities/Geometry/GeometryServer",
@@ -7,8 +7,6 @@
 	"locatorURL": "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer",
 	"fiURL": "serverIP/fiapi/default.aspx?",
 	"mapServerURL": "baseURL/FTT_Demo/MapServer",
-	"printServiceURL": "https://utility.arcgisonline.com/arcgis/rest/services/Utilities/PrintingTools/GPServer/Export%20Web%20Map%20Task",
-	"apiKey":"apiKey",
 	"mapSpatialReference":"4326",
 	"bufferSpatialReference":"4269",
 	"lightningSpatialReference":"3857",
@@ -163,10 +161,9 @@
 			"outfield":true
 		},
 		{
-			"name": "OBJECTID_1",
+			"name": "objectid",
 			"isAttribute": false,
-			"outfield": false,
-			"key": true
+			"outfield": false
 		},
 		{
 			"name": "owner",
@@ -176,7 +173,8 @@
 		{
 			"name": "lineids",
 			"isAttribute": false,
-			"outfield":true
+			"outfield":true,
+			"key": true
 		}
 	],
 	"timezone": "America/Chicago"
