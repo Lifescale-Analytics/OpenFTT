@@ -416,6 +416,8 @@ require([
     ],
   });
 
+  
+
   //ui components
   function displayFIInfo(feature) {
     var div = document.createElement("div");
@@ -462,23 +464,26 @@ require([
     output += "<B>Via Line: " + lname + "</B><BR />";
 
     //var strPt = new Point(feature.graphic.attributes.LONGITUDE, feature.graphic.attributes.LATITUDE,{wkid: mapSpatialReference});
-    var poi = new Point(
-      {
+    var poi = new Point({
         longitude: feature.graphic.geometry.longitude,
         latitude: feature.graphic.geometry.latitude,
-      },
-      { wkid: mapSpatialReference }
-    );
+		spatialReference: { wkid: mapSpatialReference }
+    });
 
     //identify the line vertex with the smallest distance from structure
     var voi;
-    var smallestvoiddist = 100;
+    var smallestvoiddist;
     for (i = 0; i < lineGeometries.length; i++) {
       var newline = new Polyline({
         paths: lineGeometries[i].paths,
-        wkid: mapSpatialReference,
+        spatialReference: { wkid: mapSpatialReference },
       });
       var nve = geometryEngine.nearestVertex(newline, poi);
+	  //initialize voi and smallestvoidist.
+	  if (i==0) {
+			voi=nve;
+			smallestvoiddist = nve.distance;
+	  }
       if (nve.distance < smallestvoiddist) {
         voi = nve;
         smallestvoiddist = nve.distance;
@@ -511,9 +516,10 @@ require([
       var stationPoint = new Point({
         longitude: stationList[i].longitude,
         latitude: stationList[i].latitude,
-        wkid: mapSpatialReference,
+        spatialReference: {wkid: mapSpatialReference}
       });
-      var seg = new Polyline({ wkid: mapSpatialReference });
+      var seg = new Polyline();
+	  seg.spatialReference = SpatialReference({wkid: mapSpatialReference });
       seg.addPath([poi, stationPoint]);
       var segLength = geometryEngine.geodesicLength(seg, "miles");
       var out = segLength.toFixed(2) + " to " + stationList[i].name + "<br />";
@@ -524,9 +530,7 @@ require([
 
   function distToStation(vertexOfInterest) {
     var outputDist = [];
-    var pointOfInterest = new Point(vertexOfInterest.coordinate, {
-      wkid: mapSpatialReference,
-    });
+    var pointOfInterest = new Point(vertexOfInterest.coordinate);
     var segLength = [];
 
     //for each station get distance to point
@@ -534,8 +538,9 @@ require([
       var stationPoint = new Point({
         longitude: stationList[i].longitude,
         latitude: stationList[i].latitude,
-        wkid: mapSpatialReference,
+        spatialReference: {wkid: mapSpatialReference},
       });
+
 
       var stationPoints = [];
       stationPoints.push(stationPoint);
@@ -813,7 +818,7 @@ require([
     var pt = {
       type: "point",
       longitude: stationGeometry[0].longitude,
-      latitude: stationGeometry[0].latitude,
+      latitude: stationGeometry[0].latitude
     };
 
     var startSt = new Graphic({
@@ -841,7 +846,7 @@ require([
     var ltgPOI = new Point({
       latitude: lat.value,
       longitude: lon.value,
-      spatialReference: { wkid: mapSpatialReference },
+      spatialReference: { wkid: 4326 },
     });
 
     ltg = new Graphic({
@@ -1038,6 +1043,8 @@ require([
     extent: initialExtent
   });
 
+
+
   //widgets
   var toggle = new BasemapToggle({
     view: view,
@@ -1066,6 +1073,7 @@ require([
   view.ui.add(print, "top-right");
 
   view.when(function () {
+
     //if commandline is null use normal work flow, else autopopulate form with CLI value
     var srch = location.search;
     if (srch.length > 0) {
@@ -1556,12 +1564,17 @@ require([
       var values = features.map(function (feature) {
         var fields = [];
         stationFields.map((f) => {
-          var curVal = f.isAttribute
-            ? feature.attributes[f.name]
-            : feature.geometry[f.name];
-
-          fields.push(curVal);
+			if(f.isAttribute) {
+				var curVal = feature.attributes[f.name];
+				fields.push(curVal);
+            }
+			
         });
+		//get geometry from the map service instead of the attributes.
+		var lat=feature.geometry.latitude;
+		fields.push(lat);
+		var lon=feature.geometry.longitude;
+		fields.push(lon);
         return fields.join("|");
       });
       return values;
@@ -1784,7 +1797,7 @@ require([
       var newpt = {
         type: "point",
         longitude: startStationGeometries[0].longitude,
-        latitude: startStationGeometries[0].latitude,
+        latitude: startStationGeometries[0].latitude
       };
 
       var ft = new Graphic({
@@ -2011,36 +2024,46 @@ require([
     var dist1;
     var dist2;
     var closestPt;
-    var distTot = 100000;
+    var distTot;
     var reverseFlag = false;
     var closestLine = 0;
     var closestPath = 0;
+	var first=true;
 
     //loop through line line ends, determine which end of which path is the start location
+
+	//assume point is wgs84, convert to mapunits
+	var startpoint=new Point({latitude: startPt[0].latitude,longitude: startPt[0].longitude});
+
     for (let ln in lineEnds) {
-      var path1 = [
-        [startPt[0].longitude, startPt[0].latitude],
-        [lineEnds[ln].startPt[0], lineEnds[ln].startPt[1]],
-      ];
+	  var studyPointsl1=[];
+      var studyPointsl2=[];
+	  studyPointsl1.push(startpoint);
+	  studyPointsl2.push(startpoint);
 
-      var end1pl = new Polyline({
-        paths: path1,
-        spatialReference: { wkid: mapSpatialReference }, ///anything would be WGS84
-      });
+	  //first end
+	  var end1pl=new Polyline();
+	  var endptwgs84 = webMercatorUtils.xyToLngLat(lineEnds[ln].startPt[0], lineEnds[ln].startPt[1]);
+	  var lineend1=new Point({longitude: endptwgs84[0], latitude: endptwgs84[1]});
+	  studyPointsl1.push(lineend1);
+      end1pl.addPath(studyPointsl1);
 
-      //end 2
-      var path2 = [
-        [startPt[0].longitude, startPt[0].latitude],
-        [lineEnds[ln].endPt[0], lineEnds[ln].endPt[1]],
-      ];
+	  //other end
+	  var end2pl = new Polyline();
+	  endptwgs84 = webMercatorUtils.xyToLngLat(lineEnds[ln].endPt[0], lineEnds[ln].endPt[1]);
+	  var lineend2=new Point({longitude: endptwgs84[0], latitude: endptwgs84[1]});
+	  studyPointsl2.push(lineend2);
+      end2pl.addPath(studyPointsl2);
 
-      var end2pl = new Polyline({
-        paths: path2,
-        spatialReference: { wkid: mapSpatialReference },
-      });
 
       dist1 = geometryEngine.geodesicLength(end1pl, "feet");
       dist2 = geometryEngine.geodesicLength(end2pl, "feet");
+
+	  //init the distance on the first run through the loop
+	  if(first){
+		distTot=dist2;
+		first=false;
+	  }
 
       //determine if this is the shortest distance so far
       if (dist1 <= distTot || dist2 <= distTot) {
@@ -2111,21 +2134,30 @@ require([
 
     //only look for faults within the line length
     //loop through topology, accumulating distances
-    var startPt = new Point(startInfo.startPoint[0], startInfo.startPoint[1], {
-      wkid: mapSpatialReference,
-    });
+	var wgs84coords = webMercatorUtils.xyToLngLat(startInfo.startPoint[0],startInfo.startPoint[1]);
+	
+    var startPt = new Point({
+		longitude: wgs84coords[0], 
+		latitude: wgs84coords[1]
+	});
 
     curPt = startPt;
     for (let t in topology) {
       var pCoords = lineGeometry[topology[t]].paths[0][0];
-      nextPt = new Point(pCoords[0], pCoords[1], { wkid: mapSpatialReference });
+	  var wgs84pCoords = webMercatorUtils.xyToLngLat(pCoords[0], pCoords[1]);
+      nextPt = new Point({
+		  longitude: wgs84pCoords[0], 
+		  latitude: wgs84pCoords[1]
+	  });
 
       //determine direction of segment, ignore start
       if (isReversed(curPt, nextPt)) {
         //reverse the paths within this segment.
         lineGeometry[topology[t]].paths[0].reverse();
         var pCoords = lineGeometry[topology[t]].paths[0][0];
-        nextPt = new Point(pCoords[0], pCoords[1], { wkid: mapSpatialReference });
+		var wgs84pCoords=webMercatorUtils.xyToLngLat(pCoords[0], pCoords[1]);
+        nextPt = new Point({
+		longitude: wgs84pCoords[0], latitude: wgs84pCoords[1]});
         //if other endpoint still doesn't match, then throw away this path
         if (isReversed(curPt, nextPt)) {
           return coords;
@@ -2135,9 +2167,11 @@ require([
 
       for (var i = 0; i <= lenPaths; i++) {
         var pathcoords = lineGeometry[topology[t]].paths[0][i];
-        nextPt = new Point(pathcoords[0], pathcoords[1], { wkid: mapSpatialReference });
+		var pathcoordswgs84 = webMercatorUtils.xyToLngLat(pathcoords[0], pathcoords[1]);
+        nextPt = new Point({longitude: pathcoordswgs84[0], latitude: pathcoordswgs84[1]});
         if (curPt) {
-          var seg = new Polyline({ wkid: mapSpatialReference });
+          var seg = new Polyline();
+		  //seg.spatialReference = SpatialReference({ wkid: mapSpatialReference });
           seg.addPath([curPt, nextPt]);
           var segLength = geometryEngine.geodesicLength(seg, "miles");
           totalLength += segLength;
@@ -2570,7 +2604,7 @@ require([
 
     for (pt in ltgPoints) {
       var ltgpoint = new Point(ltgPoints[pt]["lon"], ltgPoints[pt]["lat"], {
-        wkid: mapSpatialReference,
+        wkid: lightningSpatialReference,
       });
       var ltgattr = ltgPoints[pt];
 
