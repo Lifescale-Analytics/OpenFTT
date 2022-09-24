@@ -1164,10 +1164,10 @@ require([
       }
     } else {
       //populate event time with default value
-      setupEventListeners();
       populateEvtTime();
       populateLineDropDown();
     }
+    setupEventListeners();
   });
 
   const copyLatLongAction = {
