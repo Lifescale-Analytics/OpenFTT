@@ -2530,19 +2530,12 @@ require([
       if (ltgPoints.length > 0) {
         plotLightning(ltgPoints);
       } else {
-        var formattedDateTime = moment
-          .tz(
-            document.getElementById(starttimefield).value,
-            "MMM DD, YYYY HH:mm:ss:SSS",
-            timezone
-          )
-          .format("MM/DD/YYYY HH:mm:ss");
         ltgPoints.push({
           id: "No Lightning Found",
           lat: "",
           lon: "",
           signal: "",
-          time: formattedDateTime,
+          time: "",
         });
         var ltgtresultdiv = document.getElementById("ltgresults");
         ltgtresultdiv.style.display = "block";
