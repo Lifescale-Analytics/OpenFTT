@@ -46,7 +46,7 @@ function downloadLightning(){
   var csvdata = csv.join('\n');
   CSVFile = new Blob([csvdata], {type: "text/csv"});
   var link = document.createElement('a');
-  
+
   link.download = "lightning.csv";
   var url = window.URL.createObjectURL(CSVFile);
   link.href=url;
@@ -141,7 +141,8 @@ require([
   var txdenabled = data.txdenabled;
   var mapSpatialReference = parseInt(data.mapSpatialReference);
   var bufferSpatialReference = parseInt(data.bufferSpatialReference);
-  var lightningSpatialReference = parseInt(data.lightningSpatialReference);
+  var lightningBufferSpatialReference = parseInt(data.lightningBufferSpatialReference);
+  var lightningPlotSpatialReference = parseInt(data.lightningPlotSpatialReference);
   var faultLocID = parseInt(data.faultLocID);
   var stationLayerID = parseInt(data.stationLayerID);
   var lineLayerID = parseInt(data.lineLayerID);
@@ -2342,7 +2343,7 @@ require([
         geometries: lineGeometries,
         unionResults: true,
         bufferSpatialReference: bufferSpatialReference,
-        outSpatialReference: lightningSpatialReference,
+        outSpatialReference: lightningBufferSpatialReference,
       });
 
       gsvc
@@ -2624,7 +2625,7 @@ require([
 
     for (pt in ltgPoints) {
       var ltgpoint = new Point(ltgPoints[pt]["lon"], ltgPoints[pt]["lat"], {
-        wkid: lightningSpatialReference,
+        wkid: lightningPlotSpatialReference,
       });
       var ltgattr = ltgPoints[pt];
 
