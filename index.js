@@ -1253,7 +1253,7 @@ require([
         const canvas = document.createElement("canvas");
         const context = canvas.getContext("2d");
         canvas.height = imageData.height;
-        canvas.width = imageData.width;
+        canvas.width = imageData.width+300;
 
         //add screenshot to canvas
 		let hdrfont = "bold 12px Arial";
@@ -1271,7 +1271,7 @@ require([
         let canvasheight = 75 + 15 * (ltginfo.tBodies[0].rows.length + stninfo.tBodies[0].rows.length + ltginfo.tBodies[0].rows.length); //add rows for the number of structures/stationsj j+ ltgPoints)
         context.fillRect(canvas.width - 300, 0, 300, canvasheight);
         context.fillStyle = "#000";
-        const leftmargin = imageData.width - 295;
+        const leftmargin = imageData.width+1;
 		const lineheight = 15;
 		var curLine = 15;
         let eventTime = document.getElementById("evttime").value;
