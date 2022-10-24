@@ -1064,13 +1064,14 @@ require([
   var print = new Print({
     view: view,
     printServiceUrl: printServiceUrl,
+    container: document.getElementById("printpanel")
   });
 
   view.ui.add("infoDiv", "top-right");
   view.ui.add(toggle, "bottom-right");
   view.ui.add(scaleBar, "bottom-left");
   view.ui.add(ccWidget, "bottom-left");
-  view.ui.add(print, "top-right");
+  //view.ui.add(print, "top-right");
 
   view.when(function () {
 
