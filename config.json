@@ -149,7 +149,8 @@
 			"name": "structno",
 			"isAttribute":true,
 			"isTitle": true,
-			"outfield":true
+			"outfield":true,
+			"tblHeader": "Structure"
 		},
 		{
 			"name": "OBJECTID_1",
@@ -159,7 +160,8 @@
 		{
 			"name": "owner",
 			"isAttribute": true,
-			"outfield": true
+			"outfield": true,
+			"tblHeader": "Owner"
 		},
 		{
 			"name": "lineids",

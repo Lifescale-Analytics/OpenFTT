@@ -182,6 +182,10 @@ require([
     .filter((f) => f.outfield)
     .map((f) => f.name);
 
+  var structTblHeaders = stationFields
+    .filter((f)=> f.tblHeader)
+    .map((f) => f.tblHeader + ", " + f.name);
+
   var queryfields = [stationTitleField, stationKeyField];
 
   var fiEnabled = data.fiEnabled;
@@ -2472,6 +2476,10 @@ require([
 
   function sendTXDrequest(xml, starttimefield) {
     var xhttp = new XMLHttpRequest();
+    xhttp.timeout=15000; //15 second timeout
+    xhttp.ontimeout = (e) => {
+      alert("No response from TXD Server.");
+    }   
     xhttp.onreadystatechange = function () {
       if (this.readyState == 4 && this.status == 200) {
         processLightningResponse(this.responseText, starttimefield);
@@ -2492,6 +2500,13 @@ require([
       .getElementsByTagName("response")[0]
       .getAttribute("type");
     if (rspType == "success") {
+      
+      var e = xmlDoc.getElementsByTagName("error-message")[0].childNodes[0].nodeValue;
+      if(e.length > 0 ){
+        alert(e);
+      }
+
+     
       var evttime = document.getElementById(starttimefield).value;
       var timeparts = evttime.split(":");
 
