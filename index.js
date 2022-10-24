@@ -31,6 +31,32 @@ function openTab(evt, tabName) {
   evt.currentTarget.className += " active";
 }
 
+function downloadLightning(){
+  var csv=[];
+  var ltgtbl = document.getElementById("resultstblltg").querySelectorAll('tr');
+  ltgtbl.forEach(function(row){
+    var cols=row.querySelectorAll('td,th');
+    var csvcols=[];
+    cols.forEach(function(c){
+      csvcols.push(c.innerText);
+    });
+    csv.push(csvcols.join(","));
+  });
+
+  var csvdata = csv.join('\n');
+  CSVFile = new Blob([csvdata], {type: "text/csv"});
+  var link = document.createElement('a');
+  
+  link.download = "lightning.csv";
+  var url = window.URL.createObjectURL(CSVFile);
+  link.href=url;
+  link.style.display="none";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+}
+
 require([
   "esri/config",
   "esri/Map",

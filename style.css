@@ -39,6 +39,14 @@ body,
   border-top: none;
 }
 
+.inlinebutton {
+  background-color: inherit;
+  border: none;
+  outline: none;
+  font-family: Arial;
+  padding: 0;
+}
+
 #infoDiv {
   background-color: white;
   color: black;
