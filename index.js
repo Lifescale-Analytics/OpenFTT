@@ -182,7 +182,7 @@ require([
     .filter((f) => f.outfield)
     .map((f) => f.name);
 
-  var structTblHeaders = stationFields
+  var structTblHeaders = fltStructureFields
     .filter((f)=> f.tblHeader)
     .map((f) => f.tblHeader + ", " + f.name);
 
@@ -431,6 +431,21 @@ require([
   var switchLayer = txMapLayers.findSublayerById(switchLayerID);
   structureLayer.popupTemplate = structurePopupTemplate;
   fiLayer.popupTemplate = fiInfoTemplate;
+
+  //create output table headers
+  var resulttblhdr = document.getElementById("resulttblhdr");
+  row = resulttblhdr.insertRow(-1);
+  structTblHeaders.map((f)=> { 
+    headerCell = document.createElement("TH"); 
+    headerCell.innerHTML = f.split(",")[0]; 
+    row.appendChild(headerCell); 
+  });
+  headerCell = document.createElement("TH");
+  headerCell.innerHTML = "Station";
+  row.appendChild(headerCell);
+  headerCell = document.createElement("TH");
+  headerCell.innerHTML = "Distance";
+  row.appendChild(headerCell);
 
   //create Map
   var map = new Map({
@@ -2304,14 +2319,20 @@ require([
           .getElementById("resultstbl")
           .getElementsByTagName("tbody")[0];
         var row = tbl.insertRow(tbl.rows.length);
-        var str = row.insertCell(0);
-        var own = row.insertCell(1);
-        var sta = row.insertCell(2);
-        var dis = row.insertCell(3);
+        var cells=[];
+        var j;
+        for(j =0; j < structTblHeaders.length; j++){
+          var cell = row.insertCell(j);
+          cells.push(cell);
+        }
+        var sta = row.insertCell(j);
+        var dis = row.insertCell(++j);
         var strinfo = fltVals[i].split("|");
-        str.innerHTML =
+        cells[0].innerHTML =
           "<p style='color:rgba(" + myColor + ");'>" + strinfo[0] + "</p>";
-        own.innerHTML = strinfo[1];
+        for(j=1; j< structTblHeaders.legnth; j++){
+          cells[j] = strinfo[j];
+        }
         sta.innerHTML =
           document.getElementById("stationSelect").options[
             document.getElementById("stationSelect").selectedIndex
