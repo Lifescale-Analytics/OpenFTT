@@ -1877,7 +1877,9 @@ require([
 
       processNextBookmark();
     } else {
-      output = "<font color='red'>Please enter a valid distance!</font>";
+      //output = "<font color='red'>Please enter a valid distance!</font>";
+      alert("Please enter a valid distance!");
+      return;
     }
 
     if (validateLightningParms(false)) {
@@ -2094,15 +2096,16 @@ require([
 
 	  //first end
 	  var end1pl=new Polyline();
-	  var endptwgs84 = webMercatorUtils.xyToLngLat(lineEnds[ln].startPt[0], lineEnds[ln].startPt[1]);
-	  var lineend1=new Point({longitude: endptwgs84[0], latitude: endptwgs84[1]});
+	  var lineend1=getPoint(lineEnds[ln].startPt[0], lineEnds[ln].startPt[1]);
+	  
 	  studyPointsl1.push(lineend1);
       end1pl.addPath(studyPointsl1);
 
 	  //other end
+	  
 	  var end2pl = new Polyline();
-	  endptwgs84 = webMercatorUtils.xyToLngLat(lineEnds[ln].endPt[0], lineEnds[ln].endPt[1]);
-	  var lineend2=new Point({longitude: endptwgs84[0], latitude: endptwgs84[1]});
+	  var lineend2= getPoint(lineEnds[ln].endPt[0],lineEnds[ln].endPt[1]);
+	  
 	  studyPointsl2.push(lineend2);
       end2pl.addPath(studyPointsl2);
 
@@ -2174,6 +2177,17 @@ require([
     }
     return;
   }
+ 
+  function getPoint(lon,lat) {
+	var pt;
+    if(mapSpatialReference==4326 || mapSpatialReference==3857) {
+		pt=new Point({longitude: lon, latitude: lat, spatialReference: mapSpatialReference});
+	} else {
+		var wgs84coords = webMercatorUtils.xyToLngLat(lon,lat);
+	    pt=new Point({longitude: wgs84coords[0], latitude: wgs84coords[1]});
+	}	
+    return pt;
+  }
 
   function getFaultCoords(lineGeometry, distance, startInfo, topology) {
     var coords = [];
@@ -2185,30 +2199,21 @@ require([
 
     //only look for faults within the line length
     //loop through topology, accumulating distances
-	var wgs84coords = webMercatorUtils.xyToLngLat(startInfo.startPoint[0],startInfo.startPoint[1]);
+	var startPt = getPoint(startInfo.startPoint[0],startInfo.startPoint[1]);
 	
-    var startPt = new Point({
-		longitude: wgs84coords[0], 
-		latitude: wgs84coords[1]
-	});
 
     curPt = startPt;
     for (let t in topology) {
       var pCoords = lineGeometry[topology[t]].paths[0][0];
-	  var wgs84pCoords = webMercatorUtils.xyToLngLat(pCoords[0], pCoords[1]);
-      nextPt = new Point({
-		  longitude: wgs84pCoords[0], 
-		  latitude: wgs84pCoords[1]
-	  });
+	  var nextPt=getPoint(pCoords[0], pCoords[1]);
 
       //determine direction of segment, ignore start
       if (isReversed(curPt, nextPt)) {
         //reverse the paths within this segment.
         lineGeometry[topology[t]].paths[0].reverse();
         var pCoords = lineGeometry[topology[t]].paths[0][0];
-		var wgs84pCoords=webMercatorUtils.xyToLngLat(pCoords[0], pCoords[1]);
-        nextPt = new Point({
-		longitude: wgs84pCoords[0], latitude: wgs84pCoords[1]});
+		nextPt = getPoint(pCoords[0], pCoords[1]);
+
         //if other endpoint still doesn't match, then throw away this path
         if (isReversed(curPt, nextPt)) {
           return coords;
@@ -2218,8 +2223,7 @@ require([
 
       for (var i = 0; i <= lenPaths; i++) {
         var pathcoords = lineGeometry[topology[t]].paths[0][i];
-		var pathcoordswgs84 = webMercatorUtils.xyToLngLat(pathcoords[0], pathcoords[1]);
-        nextPt = new Point({longitude: pathcoordswgs84[0], latitude: pathcoordswgs84[1]});
+		nextPt = getPoint(pathcoords[0],pathcoords[1]);
         if (curPt) {
           var seg = new Polyline();
 		  //seg.spatialReference = SpatialReference({ wkid: mapSpatialReference });
@@ -2334,8 +2338,8 @@ require([
         var strinfo = fltVals[i].split("|");
         cells[0].innerHTML =
           "<p style='color:rgba(" + myColor + ");'>" + strinfo[0] + "</p>";
-        for(j=1; j< structTblHeaders.legnth; j++){
-          cells[j] = strinfo[j];
+        for(j=1; j< structTblHeaders.length; j++){
+          cells[j].innerHTML = strinfo[j];
         }
         sta.innerHTML =
           document.getElementById("stationSelect").options[
@@ -2503,7 +2507,7 @@ require([
     var xhttp = new XMLHttpRequest();
     xhttp.timeout=15000; //15 second timeout
     xhttp.ontimeout = (e) => {
-      alert("No response from TXD Server.");
+      alert("TXD Error: No response from TXD Server.");
     }   
     xhttp.onreadystatechange = function () {
       if (this.readyState == 4 && this.status == 200) {
@@ -2528,10 +2532,12 @@ require([
       
       if(xmlDoc.getElementsByTagName("error-message").length > 0){
         var e = xmlDoc.getElementsByTagName("error-message")[0].childNodes[0].nodeValue;
-        if(e.length > 0 ){
-          alert(e);
-        }
-
+		//ignore no data found message, handled elsewhere
+		if(e!="No data found for the request."){
+			if(e.length > 0 ){
+			  alert("TXD Error: " + e);
+			}
+		}
       }
 
      
@@ -2626,7 +2632,7 @@ require([
     } else {
       var e =
         xmlDoc.getElementsByTagName("error-message")[0].childNodes[0].nodeValue;
-      alert(e);
+      alert("TXD Error: " + e);
     }
   }
 
