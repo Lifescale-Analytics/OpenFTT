@@ -1825,10 +1825,14 @@ require([
 
     if (!isNaN(distance) && isFinite(distance) && distance > 0) {
       if (lineSelect.selectedIndex == 0) {
-        output = "<font color='red'>Please Select Line</font>";
+        //output = "<font color='red'>Please Select Line</font>";
+        alert("Please Select Line!");
+        return;
       } else {
         if (stationSelect.selectedIndex == 0) {
-          output = "<font color='red'>Please Select Station</font>";
+          //output = "<font color='red'>Please Select Station</font>";
+          alert("Please select a station");
+          return;
         } else {
           lineID = lineSelect.value;
           getFaultIndicators(lineID);
