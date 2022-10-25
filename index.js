@@ -2501,9 +2501,12 @@ require([
       .getAttribute("type");
     if (rspType == "success") {
       
-      var e = xmlDoc.getElementsByTagName("error-message")[0].childNodes[0].nodeValue;
-      if(e.length > 0 ){
-        alert(e);
+      if(xmlDoc.getElementsByTagName("error-message").length > 0){
+        var e = xmlDoc.getElementsByTagName("error-message")[0].childNodes[0].nodeValue;
+        if(e.length > 0 ){
+          alert(e);
+        }
+
       }
 
      
