@@ -1,5 +1,6 @@
 {
 	"servername": "http://lsagis.com",
+	"useProxy": true,
 	"proxyURL": "serverIP/arcgisproxy/proxy.ashx",
 	"baseURL": "servername/server/rest/services",
 	"gsvcURL": "baseURL/Utilities/Geometry/GeometryServer",
@@ -7,12 +8,12 @@
 	"locatorURL": "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer",
 	"fiURL": "serverIP/fiapi/default.aspx?",
 	"mapServerURL": "baseURL/FTT_Demo/MapServer",
-	"printServiceURL": "https://utility.arcgisonline.com/arcgis/rest/services/Utilities/PrintingTools/GPServer/Export%20Web%20Map%20Task",
-	"apiKey":"apiKey",
 	"mapSpatialReference":"4326",
 	"bufferSpatialReference":"4269",
 	"lightningBufferSpatialReference":"3857",
 	"lightningPlotSpatialReference":"4326",
+	"printServiceURL": "https://utility.arcgisonline.com/arcgis/rest/services/Utilities/PrintingTools/GPServer/Export%20Web%20Map%20Task",
+	"apiKey":"apiKey",
 	"stationLayerID": "2",
 	"lineLayerID": "8",
 	"structureLayerID": "0",
@@ -106,6 +107,7 @@
 	],
 	"switchEnabled":true,
 	"switchPrimaryKey":"ITS_TL_ID",
+	"switchRender": "{\"type\":\"simple\",\"symbol\":{\"type\":\"simple-marker\",\"style\":\"diamond\",\"outline\":{\"color\":[0,127,81,1]},\"color\":[0,127,81,0.7]}}",
 	"txduid": "uid",
 	"txdpwd": "pwd",
 	"txdenabled":true,
@@ -142,6 +144,9 @@
 			"outfield": true
 		}
 	],
+	"stationRender": "{\"type\":\"simple\",\"symbol\":{\"type\":\"simple-marker\",\"style\":\"square\",\"outline\":{\"color\":[0,92,230,1]},\"size\":6,\"color\":[0,92,230,1]}}",
+	"useStationLabel":true,
+	"stationLabel": "{\"symbol\":{\"type\":\"text\",\"color\":\"black\",\"font\":{\"family\":\"Arial\",\"size\":12}},\"labelPlacement\":\"above-center\",\"labelExpression\":\"[NAME]\"}",
 	"useStructureProximity": false,
 	"structureProximityFt": 3,
 	"structureFields": [
@@ -170,5 +175,8 @@
 			"key": true
 		}
 	],
+	"structureRender": "{\"type\":\"simple\",\"symbol\":{\"type\":\"simple-marker\",\"style\":\"cross\",\"size\":4}}",
+	"useStructureLabel": false,
+	"structureLabel": "{\"symbol\":{\"type\":\"text\",\"color\":\"black\",\"font\":{\"family\":\"Arial\",\"size\":12}},\"labelPlacement\":\"above-center\",\"labelExpression\":\"[STOMPDB.Structure.STRC_NUM]\"}",
 	"timezone": "America/Chicago"
 }

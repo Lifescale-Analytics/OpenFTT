@@ -84,6 +84,8 @@ require([
   "esri/geometry/support/webMercatorUtils",
   "esri/symbols/PictureMarkerSymbol",
   "esri/symbols/TextSymbol",
+  "esri/layers/support/LabelClass",
+  "esri/core/Collection",
   "dojo/json",
   "dojo/text!./config.json",
 ], function (
@@ -113,6 +115,8 @@ require([
   webMercatorUtils,
   PictureMarkerSymbol,
   TextSymbol,
+  LabelClass,
+  Collection,
   json,
   data
 ) {
@@ -121,6 +125,7 @@ require([
   var data = JSON.parse(data);
   esriConfig.apiKey = data.apiKey;
   var gisServerName = data.servername;
+  var useProxy = data.useProxy;
   var proxyURL = data.proxyURL.replace("serverIP", serverIP);
   var baseURL = data.baseURL.replace("servername", gisServerName);
   var gsvcURL = data.gsvcURL.replace("baseURL", baseURL);
@@ -160,6 +165,8 @@ require([
   var fltStructureFields = data.structureFields;
   var useStructureProximity= data.useStructureProximity;
   var structureProximityFt = data.structureProximityFt;
+  var useStructureLabel = data.useStructureLabel;
+
   var structureKeyField = fltStructureFields
     .filter((f) => f.key)
     .map((f) => f.name)[0];
@@ -169,7 +176,7 @@ require([
   var fltStructureOutFields = fltStructureFields
     .filter((f) => f.outfield)
     .map((f) => f.name);
-
+  var useStationLabel = data.useStationLabel;
   var stationFields = data.stationFields;
   var stationTitleField = stationFields
     .filter((f) => f.isTitle)
@@ -232,10 +239,13 @@ require([
   ];
 
   //set up proxyUrl
-  urlUtils.addProxyRule({
-    urlPrefix: gisServerName,
-    proxyUrl: proxyURL,
-  });
+  if(useProxy){
+    urlUtils.addProxyRule({
+      urlPrefix: gisServerName,
+      proxyUrl: proxyURL,
+    });
+  
+  }
 
   //create layers for lines/stations/structures/highlights/faults
   var lineRender = {
@@ -246,40 +256,9 @@ require([
     },
   };
 
-  var lineRender2 = {
-    type: "simple-line",
-    color: [255, 0, 0, 1],
-  };
-
-  var stationRender = {
-    type: "simple",
-    symbol: {
-      type: "simple-marker",
-      style: "square",
-      outline: { color: [0, 92, 230, 1] },
-      size: 6,
-      color: [0, 92, 230, 1],
-    },
-  };
-
-  var structureRender = {
-    type: "simple",
-    symbol: {
-      type: "simple-marker",
-      style: "cross",
-      size: 4,
-    },
-  };
-
-  var switchRender = {
-    type: "simple",
-    symbol: {
-      type: "simple-marker",
-      style: "diamond",
-      outline: { color: [0, 127, 81, 1] },
-      color: [0, 127, 81, .7] ,
-    },
-  };
+  var stationRender=JSON.parse(data.stationRender);
+  var structureRender=JSON.parse(data.structureRender);
+  var switchRender=JSON.parse(data.switchRender);
 
   var ltgSymbol = {
     type: "picture-marker",
@@ -362,6 +341,9 @@ require([
   var fiStatusLayer = new GraphicsLayer();
   //var bufferLayer = new GraphicsLayer();
 
+  const structureLabel = JSON.parse(data.structureLabel);
+  const stationLabel = JSON.parse(data.stationLabel);
+
   var txMapLayers = new MapImageLayer({
     url: mapServerURL,
     sublayers: [
@@ -376,22 +358,23 @@ require([
         visible: false,
       },
       {
-        id: fiLayerID,
-        renderer: fiSymbol,
-        visible: false,
-      },
-      {
         id: structureLayerID,
         renderer: structureRender,
         visible: false,
-      },
-      {
-        id: switchLayerID,
-        renderer: switchRender,
-        visible: false,
-      },
+      }
     ],
   });
+
+  if(fiEnabled){
+    var fiSubLayer = new Sublayer({id: fiLayerID, renderer: fiSymbol, visible: false});
+    txMapLayers.sublayers.add(fiSubLayer);
+  }
+
+  if(switchEnabled){
+    var switchSubLayer = new Sublayer({id: switchLayerID, renderer: switchRender, visible: false});
+    txMapLayers.sublayers.add(switchSubLayer);
+  }
+
 
   var structurePopupTemplate = {
     title: "Structure: {" + `${structureTitleField}` + "}",
@@ -425,12 +408,28 @@ require([
   };
 
   var lineLayer = txMapLayers.findSublayerById(lineLayerID);
+  
+  var fiLayer;
+  if(fiEnabled){
+    fiLayer = txMapLayers.findSublayerById(fiLayerID);
+    fiLayer.popupTemplate = fiInfoTemplate;
+  }
+
+  var switchLayer;
+  if(switchEnabled) { 
+    switchLayer = txMapLayers.findSublayerById(switchLayerID);
+  }
+
   var stationLayer = txMapLayers.findSublayerById(stationLayerID);
+  if(useStationLabel){
+    stationLayer.labelingInfo = [stationLabel];
+  }
+
   var structureLayer = txMapLayers.findSublayerById(structureLayerID);
-  var fiLayer = txMapLayers.findSublayerById(fiLayerID);
-  var switchLayer = txMapLayers.findSublayerById(switchLayerID);
   structureLayer.popupTemplate = structurePopupTemplate;
-  fiLayer.popupTemplate = fiInfoTemplate;
+  if(useStructureLabel){
+    structureLayer.labelingInfo = [structureLabel];
+  }
 
   //create output table headers
   var resulttblhdr = document.getElementById("resulttblhdr");
@@ -717,47 +716,56 @@ require([
   }
 
   function setFIDefinitionExpression(lineID) {
-    fiLayer.definitionExpression = `${fiPrimaryKey} = '${lineID}'`;
+    if(fiEnabled){
+      fiLayer.definitionExpression = `${fiPrimaryKey} = '${lineID}'`;
 
-    if (!fiLayer.visible) {
-      fiLayer.visible = true;
+      if (!fiLayer.visible) {
+        fiLayer.visible = true;
+      }
+      queryForFIStatus();
+  
     }
-    queryForFIStatus();
   }
 
   function setSwitchDefinitionExpression(lineID) {
-    switchLayer.definitionExpression = `${switchPrimaryKey} = '${lineID}'`;
-    if (!switchLayer.visible) {
-      switchLayer.visible = true;
+    if(switchEnabled){
+      switchLayer.definitionExpression = `${switchPrimaryKey} = '${lineID}'`;
+      if (!switchLayer.visible) {
+        switchLayer.visible = true;
+      }
+  
     }
   }
 
   function queryForFIStatus() {
-    var fiQuery = fiLayer.createQuery();
-    fiQuery.outFields = fiStatusFields;
-
-    fiLayer.queryFeatures(fiQuery).then(function (response) {
-      response.features.forEach(function (feature) {
-        var statusField = fiFields
-          .filter((f) => f.isStatusFeature)
-          .map((f) => f.fieldName);
-        if (statusField && statusField.length > 0) {
-          if (feature.attributes[statusField[0]] == "N") {
-            var symbol = fiStatusSymbol("OFFLINE");
-
-            fi = new Graphic({
-              geometry: feature.geometry,
-              symbol: symbol,
-              attributes: feature.attributes,
-              popupTemplate: fiInfoTemplate,
-            });
-            fiStatusLayer.add(fi);
-          } else {
-            getFIStatusPointsFromAPI(feature);
+    if(fiEnabled){
+      var fiQuery = fiLayer.createQuery();
+      fiQuery.outFields = fiStatusFields;
+  
+      fiLayer.queryFeatures(fiQuery).then(function (response) {
+        response.features.forEach(function (feature) {
+          var statusField = fiFields
+            .filter((f) => f.isStatusFeature)
+            .map((f) => f.fieldName);
+          if (statusField && statusField.length > 0) {
+            if (feature.attributes[statusField[0]] == "N") {
+              var symbol = fiStatusSymbol("OFFLINE");
+  
+              fi = new Graphic({
+                geometry: feature.geometry,
+                symbol: symbol,
+                attributes: feature.attributes,
+                popupTemplate: fiInfoTemplate,
+              });
+              fiStatusLayer.add(fi);
+            } else {
+              getFIStatusPointsFromAPI(feature);
+            }
           }
-        }
+        });
       });
-    });
+  
+    }
   }
 
   function getFIStatusPointsFromAPI(feature) {
@@ -1757,13 +1765,16 @@ require([
       lineLayer.visible = false;
       stationLayer.visible = false;
       structureLayer.visible = false;
-      fiLayer.visible = false;
 
       stationLayer.definitionExpression = "1=1";
       var sg = queryForStationGeometries();
       structureLayer.definitionExpression = "1=1";
       var tg = queryForStructureGeometries();
-      fiLayer.definitionExpression = "1=1";
+
+      if(fiEnabled){
+        fiLayer.visible = false;
+        fiLayer.definitionExpression = "1=1";  
+      }
 
       //reset form
       stationSelect.options.length = 0;
