@@ -45,6 +45,8 @@ body,
   outline: none;
   font-family: Arial;
   padding: 0;
+  color: rgb(0, 143, 33);
+  
 }
 
 th, td {
