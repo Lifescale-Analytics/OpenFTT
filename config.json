@@ -4,7 +4,8 @@
 	"proxyURL": "serverIP/arcgisproxy/proxy.ashx",
 	"baseURL": "servername/server/rest/services",
 	"gsvcURL": "baseURL/Utilities/Geometry/GeometryServer",
-	"txdurl": "serverIP/arcgisproxy/proxy.ashx?https://txd.vaisala.com/txd100/xml",
+	"txdurl1": "serverIP/arcgisproxy/proxy.ashx?https://txd.vaisala.com/txd100/xml",
+	"txdurl": "serverIP/OpenFTT/demo.xml",
 	"locatorURL": "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer",
 	"fiURL": "serverIP/fiapi/default.aspx?",
 	"mapServerURL": "baseURL/FTT3857/MapServer",
@@ -110,7 +111,7 @@
 	"switchRender": "{\"type\":\"simple\",\"symbol\":{\"type\":\"simple-marker\",\"style\":\"diamond\",\"outline\":{\"color\":[0,127,81,1]},\"color\":[0,127,81,0.7]}}",
 	"txduid": "uid",
 	"txdpwd": "pwd",
-	"txdenabled":false,
+	"txdenabled": "demo",
 	"lineFields": [
 		{
 			"name": "ITS_NAME",

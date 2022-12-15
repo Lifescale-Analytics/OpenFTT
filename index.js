@@ -1570,7 +1570,12 @@ require([
   function setStructureDefByProx(values){
 	var defExpr="";
 	values.forEach(function(value) {
-		defExpr += `${structureKeyField} = '${value}' OR `;
+    if(!isNaN(value)){
+      defExpr += `${structureKeyField} = ${value} OR `;
+    } else {
+      defExpr += `${structureKeyField} = '${value}' OR `;
+    }
+		
 	});
 	defExpr = defExpr.substring(0,defExpr.length -4);
 	structureLayer.definitionExpression = defExpr;	  
@@ -2527,11 +2532,15 @@ require([
         processLightningResponse(this.responseText, starttimefield);
       }
     };
-    xhttp.open("POST", txdurl, true);
-    xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-    //xhttp.setRequestHeader("User-agent", "VaisalaTDX100Client/1.0");
-
-    xhttp.send("request=" + xml);
+    if(txdenabled=="demo"){
+      xhttp.open("GET", txdurl, true);
+    } else {
+      xhttp.open("POST", txdurl, true);
+      xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+      //xhttp.setRequestHeader("User-agent", "VaisalaTDX100Client/1.0");
+    }
+      xhttp.send("request=" + xml);
+  
   }
 
   function processLightningResponse(rsp, starttimefield) {
