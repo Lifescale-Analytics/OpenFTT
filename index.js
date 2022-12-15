@@ -2081,6 +2081,7 @@ require([
       }
       lineEnds[ln].neighbors = neighbors;
     }
+
     return lineEnds;
   }
 
@@ -2190,13 +2191,16 @@ require([
   }
  
   function getPoint(lon,lat) {
-	var pt;
-    if(mapSpatialReference==4326 || mapSpatialReference==3857) {
-		pt=new Point({longitude: lon, latitude: lat, spatialReference: mapSpatialReference});
-	} else {
-		var wgs84coords = webMercatorUtils.xyToLngLat(lon,lat);
-	    pt=new Point({longitude: wgs84coords[0], latitude: wgs84coords[1]});
-	}	
+    var pt;
+    if(Math.abs(lon) <= 180 ) {
+        //we're using wgs84 coords
+        pt = new Point ({longitude:lon, latitude: lat});
+    } else {
+        //we need to project
+        var wgs84coords=webMercatorUtils.xyToLngLat(lon,lat);
+        pt = new Point({longitude:wgs84coords[0], latitude: wgs84coords[1]});
+    }
+
     return pt;
   }
 
@@ -2266,9 +2270,7 @@ require([
     var fltPts = [];
 
     for (pt in faultCoords) {
-      var newpt = new Point(faultCoords[pt][0][0], faultCoords[pt][0][1], {
-        wkid: mapSpatialReference,
-      });
+      var newpt = getPoint(faultCoords[pt][0][0], faultCoords[pt][0][1]);
 
       ft = new Graphic({
         geometry: newpt,
