@@ -19,6 +19,7 @@ function openTab(evt, tabName) {
   //}
 
   var i, tabcontent, tablinks;
+
   tabcontent = document.getElementsByClassName("tabcontent");
   for (i = 0; i < tabcontent.length; i++) {
     tabcontent[i].style.display = "none";
@@ -29,6 +30,67 @@ function openTab(evt, tabName) {
   }
   document.getElementById(tabName).style.display = "block";
   evt.currentTarget.className += " active";
+  //resize infoDiv minHeight by tab
+  getInfoDivMinHeight();
+  
+}
+
+function getInfoDivMinHeight(){
+  var minHeight=71;
+  var openBlock=0;
+
+  tabcontent = document.getElementsByClassName("tabcontent");
+  for (i=0; i< tabcontent.length; i++){
+    if(tabcontent[i].style.display== "block"){
+      openBlock=1;
+      switch(i){
+        case 0:
+        case 1:
+          //faults, lightning
+          minHeight=156;
+          break;
+        case 2:
+        case 5:
+          //bookmarks, tools, help
+          minHeight=71;
+          break;
+        case 4:
+          minHeight=71;
+          if($("#printpanel")[0].style.display=='block') { 
+            minHeight +=500;
+          }
+          break;
+        case 3:
+          //legend
+          minHeight=223;
+          break;
+      }
+    }
+    //stop going through for loop if we've found the open block
+    if(openBlock==1){
+      break;
+    }
+  }
+
+  //is the ltgresults tab open
+  if($("#ltgresults")[0].style.display=='block'){
+    minHeight+=300;
+  }
+
+  //is the fltresults tab open
+  if($("#fltresults")[0].style.display=='block'){
+    minHeight+=300;
+  }
+
+
+
+  var infoDiv = $("#infoDiv");
+  infoDiv.height(minHeight);
+  infoDiv.draggable().resizable({
+    minHeight: minHeight,
+    minWidth: infoDiv.outerWidth(),
+  });
+
 }
 
 function downloadLightning(){
@@ -1762,6 +1824,9 @@ require([
     //document.getElementById("ltgLon").value="";
     document.getElementById("ltgAddress").value = "";
 
+    //resize min infoDiv height
+    getInfoDivMinHeight();
+
     //clear scada mapping
     fiSCADANames.length = 0;
 
@@ -1875,6 +1940,10 @@ require([
 
       var fltresultdiv = document.getElementById("fltresults");
       fltresultdiv.style.display = "block";
+
+      //resize info div container
+      getInfoDivMinHeight();
+
       var tbl = document
         .getElementById("resultstbl")
         .getElementsByTagName("tbody")[0];
@@ -2638,6 +2707,9 @@ require([
         });
         var ltgtresultdiv = document.getElementById("ltgresults");
         ltgtresultdiv.style.display = "block";
+        //resize the infoDiv
+        getInfoDivMinHeight();
+
         var tbl = document
           .getElementById("resultstblltg")
           .getElementsByTagName("tbody")[0];
@@ -2803,11 +2875,7 @@ $(document).ready(function () {
     timeFormat: "HH:mm:ss.l",
   });
 
-  var infoDiv = $("#infoDiv");
-  infoDiv.draggable().resizable({
-    minHeight: infoDiv.outerHeight(),
-    minWidth: infoDiv.outerWidth(),
-  });
+  getInfoDivMinHeight();
 
   $("#btnPanel").hover(
     function () {
@@ -2830,5 +2898,6 @@ $(document).ready(function () {
 
   $("#togglePrintView").click(function () {
     $(".esri-print").toggle();
+    getInfoDivMinHeight();
   });
 });
