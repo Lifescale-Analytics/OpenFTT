@@ -54,6 +54,7 @@
 		}
 	],
 	"fiEnabled":false,
+	"fiHealthCheckPt":"",
 	"fiTimeZone": "America/New_York",
 	"fiInfotitle": "Fault Indicator: {TITLE}",
 	"fiPrimaryKey": "LINE_ID",

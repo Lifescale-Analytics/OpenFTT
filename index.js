@@ -199,6 +199,7 @@ require([
   var stationLayerID = data.stationLayerID;
   var structureLayerID = data.structureLayerID;
   var fiLayerID = data.fiLayerID;
+  var fiHealthCheckPt = data.fiHealthCheckPt;
   var initialExtent = JSON.parse(data.initialExtent);
   var maxRecordCount = data.maxRecordCount;
   var ltgPopuptitle = data.ltgPopuptitle;
@@ -528,10 +529,12 @@ require([
   //ui components
   function displayFIInfo(feature) {
     var div = document.createElement("div");
-
     var output =
       "<table cellpadding=2><tr align=left><th>Point</th><th>Time</th><th>Value</th><th>Status</th></tr>";
 
+    if(fiHealthCheckPt.length > 0 ) {
+      //todo: finish this
+    }
     if (feature.graphic.attributes.rawdata.length > 0) {
       output += feature.graphic.attributes.rawdata.map(function (item) {
         var ct = moment
@@ -842,6 +845,9 @@ require([
       .tz(fiTimeZone)
       .format("MM/DD/YYYY HH:mm:ss.SSS");
     var url = fiURL + "pointname=";
+    if(fiHealthCheckPt.length>0) {
+      url+=fiHealthCheckPt + ",";
+    }
     var displayFields = fiFields
       .filter((f) => f.forDisplay)
       .map((f) => f.fieldName);
@@ -878,12 +884,26 @@ require([
   function processFIResponse(rsp, feature) {
     if (isValidJSON(rsp)) {
       var fiStatus = JSON.parse(rsp);
-      var symbol = fiStatusSymbol(fiStatus.didAssert);
-      feature.symbol = symbol;
-      feature.attributes.rawdata = fiStatus.rawdata;
-      fiPoints.push(feature);
-      redrawFI(feature);
+      var fiserverhealth = getFIServerHealth(rsp);
+      if(fiserverhealth){
+        var symbol = fiStatusSymbol(fiStatus.didAssert);
+        feature.symbol = symbol;
+        feature.attributes.rawdata = fiStatus.rawdata;
+        fiPoints.push(feature);
+        redrawFI(feature);
+  
+      } else {
+        alert("FI Point Server Offline");
+      }
     }
+  }
+
+  function getFIServerHealth(rsp){
+    if(fiHealthCheckPt.length > 0) {
+      //todo: finish this
+      
+    } 
+    return true;
   }
 
   function redrawFI(feature) {
