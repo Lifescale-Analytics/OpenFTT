@@ -2089,6 +2089,10 @@ require([
       //no fault coordinates found
       var fltresultdiv = document.getElementById("fltresults");
       fltresultdiv.style.display = "block";
+
+      //resize info div container
+      getInfoDivMinHeight();
+
       var tbl = document
         .getElementById("resultstbl")
         .getElementsByTagName("tbody")[0];
@@ -2425,6 +2429,9 @@ require([
 
       var fltresultdiv = document.getElementById("fltresults");
       fltresultdiv.style.display = "block";
+
+      //resize info div container
+      getInfoDivMinHeight();
 
       for (var i = 0; i < fltVals.length; i++) {
         var myColor = JSON.stringify(colorWays[faultLocID]);
