@@ -264,6 +264,7 @@ require([
   var fiFields = data.fiFields;
   var infoFields = fiFields.map((f) => f);
   var fiStatusFields = fiFields.map((f) => f.fieldName);
+  var fiHealthStatus = false;
 
   var ltgPopupFields = data.ltgPopupFields;
 
@@ -529,12 +530,15 @@ require([
   //ui components
   function displayFIInfo(feature) {
     var div = document.createElement("div");
+    if(fiHealthCheckPt.length > 0 ) {
+      if(!fiHealthStatus){
+        output += "<div><font color='red'>WARNING! FI Point Server Offline</font></div>";
+      }
+    }
+
     var output =
       "<table cellpadding=2><tr align=left><th>Point</th><th>Time</th><th>Value</th><th>Status</th></tr>";
 
-    if(fiHealthCheckPt.length > 0 ) {
-      //todo: finish this
-    }
     if (feature.graphic.attributes.rawdata.length > 0) {
       output += feature.graphic.attributes.rawdata.map(function (item) {
         var ct = moment
@@ -884,7 +888,7 @@ require([
   function processFIResponse(rsp, feature) {
     if (isValidJSON(rsp)) {
       var fiStatus = JSON.parse(rsp);
-      var fiserverhealth = getFIServerHealth(rsp);
+      var fiserverhealth = getFIServerHealth(fiStatus);
       if(fiserverhealth){
         var symbol = fiStatusSymbol(fiStatus.didAssert);
         feature.symbol = symbol;
@@ -900,7 +904,21 @@ require([
 
   function getFIServerHealth(rsp){
     if(fiHealthCheckPt.length > 0) {
-      //todo: finish this
+      //find most recent health point entry
+      //get evtDate
+      var evtDate=moment.tz(document.getElementById("evttime").value,"MM/DD/YYYY HH:mm:ss.SSS",timezone);
+      var minDiff=15;
+      for(var i=0;i<=rsp['rawdata'].length;i++){
+        if(rsp['rawdata'][i]['Pointname']==fiHealthCheckPt){
+          //get health point date/time
+          var curtime = moment.tz(rsp['rawdata'][i]['Time'],"YYYY-MM-DDTHH:mm:ss.SSS",fiTimeZone);
+          var curdiff = Math.abs(evtDate.diff(curtime,'minutes'));
+          if(curdiff<minDiff) { 
+            return true;
+          }
+        }
+      }
+      return false;
       
     } 
     return true;
