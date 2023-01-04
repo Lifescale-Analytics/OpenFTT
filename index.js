@@ -530,42 +530,43 @@ require([
   //ui components
   function displayFIInfo(feature) {
     var div = document.createElement("div");
+	var output="";
     if(fiHealthCheckPt.length > 0 ) {
       if(!fiHealthStatus){
         output += "<div><font color='red'>WARNING! FI Point Server Offline</font></div>";
       }
-    }
+    } 
 
-    var output =
-      "<table cellpadding=2><tr align=left><th>Point</th><th>Time</th><th>Value</th><th>Status</th></tr>";
+		output +=
+		  "<table cellpadding=2><tr align=left><th>Point</th><th>Time</th><th>Value</th><th>Status</th></tr>";
 
-    if (feature.graphic.attributes.rawdata.length > 0) {
-      output += feature.graphic.attributes.rawdata.map(function (item) {
-        var ct = moment
-          .tz(item.Time, "YYYY-MM-DDTHH:mm:ss", fiTimeZone)
-          .tz(timezone)
-          .format("MM/DD/YYYY HH:mm:ss");
-        let mapname = fiSCADANames.find(
-          (scmap) => scmap.scadapt === item.Pointname
-        ).mapname;
+		if (feature.graphic.attributes.rawdata.length > 0) {
+		  output += feature.graphic.attributes.rawdata.map(function (item) {
+			var ct = moment
+			  .tz(item.Time, "YYYY-MM-DDTHH:mm:ss", fiTimeZone)
+			  .tz(timezone)
+			  .format("MM/DD/YYYY HH:mm:ss");
+				let mapname = fiSCADANames.find(
+				  (scmap) => scmap.scadapt === item.Pointname
+				).mapname;
 
-        return (
-          "<tr align=left><td>" +
-          mapname +
-          "</td><td>" +
-          ct +
-          "</td><td>" +
-          item.Value +
-          "</td><td>" +
-          item.Status +
-          "</td></tr>"
-        );
-      });
-      output = output.replace(/,/gi, "");
-    } else {
-      output += "<tr><td colspan=3>No SCADA Data Found</td></tr>";
-    }
-    output += "</table>";
+				return (
+				  "<tr align=left><td>" +
+				  mapname +
+				  "</td><td>" +
+				  ct +
+				  "</td><td>" +
+				  item.Value +
+				  "</td><td>" +
+				  item.Status +
+				  "</td></tr>"
+				);
+		  });
+		  output = output.replace(/,/gi, "");
+		} else {
+		  output += "<tr><td colspan=3>No SCADA Data Found</td></tr>";
+		}
+		output += "</table>";
     div.innerHTML = output;
     return div;
   }
@@ -849,9 +850,7 @@ require([
       .tz(fiTimeZone)
       .format("MM/DD/YYYY HH:mm:ss.SSS");
     var url = fiURL + "pointname=";
-    if(fiHealthCheckPt.length>0) {
-      url+=fiHealthCheckPt + ",";
-    }
+
     var displayFields = fiFields
       .filter((f) => f.forDisplay)
       .map((f) => f.fieldName);
@@ -873,7 +872,9 @@ require([
 
     url = url.substring(0, url.length - 1);
     url += "&eventtime=" + evttime;
-
+    if(fiHealthCheckPt.length>0) {
+      url+= "&healthcheckpt=" + fiHealthCheckPt;
+    }
     var xhttp = new XMLHttpRequest();
     xhttp.onreadystatechange = function () {
       if (this.readyState == 4 && this.status == 200) {
@@ -888,8 +889,8 @@ require([
   function processFIResponse(rsp, feature) {
     if (isValidJSON(rsp)) {
       var fiStatus = JSON.parse(rsp);
-      var fiserverhealth = getFIServerHealth(fiStatus);
-      if(fiserverhealth){
+      fiHealthStatus = getFIServerHealth(fiStatus.healthdata);
+      if(fiHealthStatus){
         var symbol = fiStatusSymbol(fiStatus.didAssert);
         feature.symbol = symbol;
         feature.attributes.rawdata = fiStatus.rawdata;
@@ -906,17 +907,13 @@ require([
     if(fiHealthCheckPt.length > 0) {
       //find most recent health point entry
       //get evtDate
-      var evtDate=moment.tz(document.getElementById("evttime").value,"MM/DD/YYYY HH:mm:ss.SSS",timezone);
+      var evtDate=moment().tz(fiTimeZone);
       var minDiff=15;
-      for(var i=0;i<=rsp['rawdata'].length;i++){
-        if(rsp['rawdata'][i]['Pointname']==fiHealthCheckPt){
-          //get health point date/time
-          var curtime = moment.tz(rsp['rawdata'][i]['Time'],"YYYY-MM-DDTHH:mm:ss.SSS",fiTimeZone);
-          var curdiff = Math.abs(evtDate.diff(curtime,'minutes'));
-          if(curdiff<minDiff) { 
-            return true;
-          }
-        }
+      //get health point date/time
+      var curtime = moment.tz(rsp['Time'],"YYYY-MM-DDTHH:mm:ss.SSS",fiTimeZone);
+      var curdiff = Math.abs(evtDate.diff(curtime,'minutes'));
+      if(curdiff<minDiff) { 
+           return true;
       }
       return false;
       
