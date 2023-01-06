@@ -229,6 +229,8 @@ require([
   var useStructureProximity= data.useStructureProximity;
   var structureProximityFt = data.structureProximityFt;
   var useStructureLabel = data.useStructureLabel;
+  var useSpanTolerance = data.useSpanTolerance;
+  var spanTolerance = parseFloat(data.spanTolerance);
 
   var structureKeyField = fltStructureFields
     .filter((f) => f.key)
@@ -2196,6 +2198,19 @@ require([
     }
 
     return lineEnds;
+  }
+
+  function isNeighbor(x,y,x1,y1){
+    if(useSpanTolerance){
+      if(Math.abs(x-x1) <= spanTolerance && Math.abs(y-y1) <= spanTolerance ) {
+        return true;
+      }
+    } else {
+      if(x==x1 && y==y1){
+        return true;
+      }
+    }
+    return false;
   }
 
   function getStartPosition(startPt, lineEnds) {
