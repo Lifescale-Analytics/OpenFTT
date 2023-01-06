@@ -2178,13 +2178,10 @@ require([
         //skip current row, not a neighbor to itself
         if (r != ln) {
           if (
-            (curStartX == lineEnds[r].startPt[0] &&
-              curStartY == lineEnds[r].startPt[1]) ||
-            (curStartX == lineEnds[r].endPt[0] &&
-              curStartY == lineEnds[r].endPt[1]) ||
-            (curEndX == lineEnds[r].startPt[0] &&
-              curEndY == lineEnds[r].startPt[1]) ||
-            (curEndX == lineEnds[r].endPt[0] && curEndY == lineEnds[r].endPt[1])
+            (isNeighbor(curStartX, curStartY, lineEnds[r].startPt[0], lineEnds[r].startPt[1])) ||
+            (isNeighbor(curStartX, curStartY, lineEnds[r].endPt[0], lineEnds[r].endPt[1])) ||
+            (isNeighbor(curEndX, curEndY, lineEnds[r].startPt[0], lineEnds[r].startPt[1])) ||
+            (isNeighbor(curEndX, curEndY, lineEnds[r].endPt[0], lineEnds[r].endPt[1]))
           ) {
             if (neighbors.length > 0) {
               neighbors += "," + r;
