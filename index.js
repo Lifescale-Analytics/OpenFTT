@@ -1,3 +1,24 @@
+function getCookie(cname) {
+  let name = cname + "=";
+  let ca = document.cookie.split(";");
+  for (let i = 0; i < ca.length; i++) {
+    let c = ca[i];
+    while (c.charAt(0) == " ") {
+      c = c.substring(1);
+    }
+    if (c.indexOf(name) == 0) {
+      return c.substring(name.length, c.length);
+    }
+  }
+  return "";
+}
+
+function checkCookie() {
+  let autozoom = (getCookie("autozoomtofault")==='true');
+  document.getElementById("autozoom").checked = autozoom;
+}
+
+
 function openTab(evt, tabName) {
   var evttime = document.getElementById("evttime");
   var ltgevttime = document.getElementById("ltgevttime");
@@ -990,6 +1011,18 @@ require([
   btnClearLightning.addEventListener("click", function () {
     resetEnvironment(false);
   });
+
+  var checkAutozoom = document.getElementById("autozoom");
+  checkAutozoom.addEventListener("click", function() {
+    setCookie("autozoomtofault", checkAutozoom.checked, 365);
+  });
+
+  function setCookie(cname, cvalue, exdays) {
+    const d = new Date();
+    d.setTime(d.getTime() + exdays * 24 * 60 * 60 * 1000);
+    let expires = "expires=" + d.toUTCString();
+    document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
+  }
 
   function showPOI() {
     var lat = document.getElementById("ltgLat");
@@ -2916,6 +2949,7 @@ require([
 });
 
 $(document).ready(function () {
+  checkCookie();
   document.getElementById("defaultOpen").click();
   $("#evttime").datetimepicker({
     timeFormat: "HH:mm:ss.l",
