@@ -799,15 +799,11 @@ require([
     return queryForLineGeometries();
   }
 
-  var lineObjs;
-
   function queryForLineGeometries() {
     var lineQuery = lineLayer.createQuery();
     lineQuery.outFields = ["OBJECTID_1", "ITS_NAME"];
-    lineObjs=null;
 
     return lineLayer.queryFeatures(lineQuery).then(function (response) {
-      lineObjs=response;
       lineGeometries = response.features.map(function (feature) {
         return feature.geometry;
       });
@@ -2125,11 +2121,6 @@ require([
     }
     //find position(s)  & plot fault(s) on map
     var faultCoords = [];
-    for(let i=0; i< lineObjs.features.length ; i++){
-
-      console.log(i + ", " + lineObjs.features[i].attributes.OBJECTID_1);
-    }
-
     if (paths.length < 1) {
       paths.push(curPath);
     }
