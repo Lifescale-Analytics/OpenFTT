@@ -8,7 +8,7 @@
 	"txdurl": "serverIPOpenFTT/demo.xml",
 	"locatorURL": "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer",
 	"fiURL": "serverIP/fiapi/default.aspx?",
-	"mapServerURL": "baseURL/FTTDemo/MapServer",
+	"mapServerURL": "baseURL/FTTWGS84/MapServer",
 	"mapSpatialReference":"4326",
 	"bufferSpatialReference":"4326",
 	"lightningBufferSpatialReference":"3857",
@@ -18,7 +18,7 @@
 	"stationLayerID": "0",
 	"lineLayerID": "3",
 	"structureLayerID": "1",
-	"switchLayerID": "2",
+	"switchLayerID": "4",
 	"fiLayerID": "2",
 	"maxRecordCount": "2000",
 	"faultLocID": "0",
@@ -107,9 +107,11 @@
 			"isStatusFeature": false
 		}
 	],
-	"switchEnabled":false,
+	"switchEnabled":true,
 	"switchPrimaryKey":"ITS_TL_ID",
 	"switchRender": "{\"type\":\"simple\",\"symbol\":{\"type\":\"simple-marker\",\"style\":\"diamond\",\"outline\":{\"color\":[0,127,81,1]},\"color\":[0,127,81,0.7]}}",
+	"useSwitchLabel":true,
+	"switchLabel": "{\"symbol\":{\"type\":\"text\",\"color\":\"black\",\"font\":{\"family\":\"Arial\",\"size\":12}},\"labelPlacement\":\"above-center\",\"labelExpression\":\"[NAME]\"}",
 	"txduid": "uid",
 	"txdpwd": "pwd",
 	"txdenabled": "demo",
@@ -149,29 +151,24 @@
 	"stationRender": "{\"type\":\"simple\",\"symbol\":{\"type\":\"simple-marker\",\"style\":\"square\",\"outline\":{\"color\":[0,92,230,1]},\"size\":6,\"color\":[0,92,230,1]}}",
 	"useStationLabel":true,
 	"stationLabel": "{\"symbol\":{\"type\":\"text\",\"color\":\"black\",\"font\":{\"family\":\"Arial\",\"size\":12}},\"labelPlacement\":\"above-center\",\"labelExpression\":\"[NAME]\"}",
-	"useStructureProximity": false,
+	"useStructureProximity": true,
 	"structureProximityFt": 3,
 	"structureFields": [
 		{
-			"name": "structno",
+			"name": "OBJECTID_1",
 			"isAttribute":true,
 			"isTitle": true,
 			"outfield":true,
 			"tblHeader": "Structure"
 		},
 		{
-			"name": "OBJECTID_1",
-			"isAttribute": false,
-			"outfield": false
-		},
-		{
-			"name": "owner",
+			"name": "OWNER",
 			"isAttribute": true,
 			"outfield": true,
 			"tblHeader": "Owner"
 		},
 		{
-			"name": "lineids",
+			"name": "OBJECTID",
 			"isAttribute": false,
 			"outfield":true,
 			"key": true
@@ -180,7 +177,7 @@
 	"structureRender": "{\"type\":\"simple\",\"symbol\":{\"type\":\"simple-marker\",\"style\":\"cross\",\"size\":4}}",
 	"useStructureLabel": false,
 	"structureLabel": "{\"symbol\":{\"type\":\"text\",\"color\":\"black\",\"font\":{\"family\":\"Arial\",\"size\":12}},\"labelPlacement\":\"above-center\",\"labelExpression\":\"[STOMPDB.Structure.STRC_NUM]\"}",
-	"useSpanTolerance": false,
+	"useSpanTolerance": true,
 	"spanTolerance": ".00005",
 	"timezone": "America/Chicago"
 }

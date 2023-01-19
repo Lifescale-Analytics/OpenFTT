@@ -239,6 +239,7 @@ require([
   var switchLayerID = parseInt(data.switchLayerID);
   var switchPrimaryKey = data.switchPrimaryKey;
   var switchEnabled = data.switchEnabled;
+  var useSwitchLabel = data.useSwitchLabel;
   var fiLayerID = parseInt(data.fiLayerID);
   var maxRecordCount = parseInt(data.maxRecordCount);
   var timezone = data.timezone;
@@ -428,6 +429,7 @@ require([
   var fiStatusLayer = new GraphicsLayer();
   //var bufferLayer = new GraphicsLayer();
 
+  const switchLabel = JSON.parse(data.switchLabel);
   const structureLabel = JSON.parse(data.structureLabel);
   const stationLabel = JSON.parse(data.stationLabel);
 
@@ -457,11 +459,16 @@ require([
     txMapLayers.sublayers.add(fiSubLayer);
   }
 
+  var switchLayer;
   if(switchEnabled){
     var switchSubLayer = new Sublayer({id: switchLayerID, renderer: switchRender, visible: false});
     txMapLayers.sublayers.add(switchSubLayer);
-  }
+    switchLayer = txMapLayers.findSublayerById(switchLayerID);
+    if(useSwitchLabel) {
+      switchLayer.labelingInfo = [switchLabel];
+    }
 
+  }
 
   var structurePopupTemplate = {
     title: "Structure: {" + `${structureTitleField}` + "}",
@@ -500,11 +507,6 @@ require([
   if(fiEnabled){
     fiLayer = txMapLayers.findSublayerById(fiLayerID);
     fiLayer.popupTemplate = fiInfoTemplate;
-  }
-
-  var switchLayer;
-  if(switchEnabled) { 
-    switchLayer = txMapLayers.findSublayerById(switchLayerID);
   }
 
   var stationLayer = txMapLayers.findSublayerById(stationLayerID);
@@ -797,10 +799,15 @@ require([
     return queryForLineGeometries();
   }
 
+  var lineObjs;
+
   function queryForLineGeometries() {
     var lineQuery = lineLayer.createQuery();
+    lineQuery.outFields = ["OBJECTID_1", "ITS_NAME"];
+    lineObjs=null;
 
     return lineLayer.queryFeatures(lineQuery).then(function (response) {
+      lineObjs=response;
       lineGeometries = response.features.map(function (feature) {
         return feature.geometry;
       });
@@ -2118,6 +2125,10 @@ require([
     }
     //find position(s)  & plot fault(s) on map
     var faultCoords = [];
+    for(let i=0; i< lineObjs.features.length ; i++){
+
+      console.log(i + ", " + lineObjs.features[i].attributes.OBJECTID_1);
+    }
 
     if (paths.length < 1) {
       paths.push(curPath);
@@ -2372,20 +2383,20 @@ require([
 
     //only look for faults within the line length
     //loop through topology, accumulating distances
-	var startPt = getPoint(startInfo.startPoint[0],startInfo.startPoint[1]);
+	  var startPt = getPoint(startInfo.startPoint[0],startInfo.startPoint[1]);
 	
 
     curPt = startPt;
     for (let t in topology) {
       var pCoords = lineGeometry[topology[t]].paths[0][0];
-	  var nextPt=getPoint(pCoords[0], pCoords[1]);
+	    var nextPt=getPoint(pCoords[0], pCoords[1]);
 
       //determine direction of segment, ignore start
       if (isReversed(curPt, nextPt)) {
         //reverse the paths within this segment.
         lineGeometry[topology[t]].paths[0].reverse();
         var pCoords = lineGeometry[topology[t]].paths[0][0];
-		nextPt = getPoint(pCoords[0], pCoords[1]);
+		    nextPt = getPoint(pCoords[0], pCoords[1]);
 
         //if other endpoint still doesn't match, then throw away this path
         if (isReversed(curPt, nextPt)) {
@@ -2396,10 +2407,10 @@ require([
 
       for (var i = 0; i <= lenPaths; i++) {
         var pathcoords = lineGeometry[topology[t]].paths[0][i];
-		nextPt = getPoint(pathcoords[0],pathcoords[1]);
+		    nextPt = getPoint(pathcoords[0],pathcoords[1]);
         if (curPt) {
           var seg = new Polyline();
-		  //seg.spatialReference = SpatialReference({ wkid: mapSpatialReference });
+		      //seg.spatialReference = SpatialReference({ wkid: mapSpatialReference });
           seg.addPath([curPt, nextPt]);
           var segLength = geometryEngine.geodesicLength(seg, "miles");
           totalLength += segLength;
@@ -2415,9 +2426,9 @@ require([
   }
 
   function isReversed(pta, ptb) {
-    var output = false;
-    if (pta.x != ptb.x && pta.y != ptb.y) {
-      output = true;
+    var output = true;
+    if(isNeighbor(pta.x,pta.y,ptb.x,ptb.y)){
+      output = false;
     }
 
     return output;
