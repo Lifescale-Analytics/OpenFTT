@@ -801,7 +801,6 @@ require([
 
   function queryForLineGeometries() {
     var lineQuery = lineLayer.createQuery();
-    lineQuery.outFields = ["OBJECTID_1", "ITS_NAME"];
 
     return lineLayer.queryFeatures(lineQuery).then(function (response) {
       lineGeometries = response.features.map(function (feature) {
