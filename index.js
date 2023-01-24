@@ -2899,7 +2899,7 @@ require([
           ltgPoints[pt]["smin"],
           ltgPoints[pt]["angle"]
         ),
-        spatialReference: { wkid: mapSpatialReference },
+        spatialReference: { wkid: lightningPlotSpatialReference },
       };
 
       var polygonEllipseGraphic = new Graphic({
