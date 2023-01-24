@@ -603,37 +603,42 @@ require([
     var output = "";
     output += "<B>Via Line: " + lname + "</B><BR />";
 
-    //var strPt = new Point(feature.graphic.attributes.LONGITUDE, feature.graphic.attributes.LATITUDE,{wkid: mapSpatialReference});
-    var poi = new Point({
-        longitude: feature.graphic.geometry.longitude,
-        latitude: feature.graphic.geometry.latitude,
-		spatialReference: { wkid: mapSpatialReference }
-    });
-
-    //identify the line vertex with the smallest distance from structure
-    var voi;
-    var smallestvoiddist;
-    for (i = 0; i < lineGeometries.length; i++) {
-      var newline = new Polyline({
-        paths: lineGeometries[i].paths,
-        spatialReference: { wkid: mapSpatialReference },
+    try{
+        //var strPt = new Point(feature.graphic.attributes.LONGITUDE, feature.graphic.attributes.LATITUDE,{wkid: mapSpatialReference});
+        var poi = new Point({
+          longitude: feature.graphic.geometry.longitude,
+          latitude: feature.graphic.geometry.latitude,
+          spatialReference: { wkid: mapSpatialReference }
       });
-      var nve = geometryEngine.nearestVertex(newline, poi);
-	  //initialize voi and smallestvoidist.
-	  if (i==0) {
-			voi=nve;
-			smallestvoiddist = nve.distance;
-	  }
-      if (nve.distance < smallestvoiddist) {
-        voi = nve;
+
+      //identify the line vertex with the smallest distance from structure
+      var voi;
+      var smallestvoiddist;
+      for (i = 0; i < lineGeometries.length; i++) {
+        var newline = new Polyline({
+          paths: lineGeometries[i].paths,
+          spatialReference: { wkid: mapSpatialReference },
+        });
+        var nve = geometryEngine.nearestVertex(newline, poi);
+      //initialize voi and smallestvoidist.
+      if (i==0) {
+        voi=nve;
         smallestvoiddist = nve.distance;
       }
-    }
+        if (nve.distance < smallestvoiddist) {
+          voi = nve;
+          smallestvoiddist = nve.distance;
+        }
+      }
 
-    var distances = distToStation(voi);
-    output += distances.map(function (p) {
-      return p;
-    });
+      var distances = distToStation(voi);
+      output += distances.map(function (p) {
+        return p;
+      });
+
+    } catch (e) { 
+      console.log("error with line calc: " + e.toString());
+    }
 
     var sldistance = sldisttostation(poi);
     output += "<br /><b>Via Straight line:</b> <br />";
