@@ -603,13 +603,14 @@ require([
     var output = "";
     output += "<B>Via Line: " + lname + "</B><BR />";
 
-    try{
+    //try{
         //var strPt = new Point(feature.graphic.attributes.LONGITUDE, feature.graphic.attributes.LATITUDE,{wkid: mapSpatialReference});
-        var poi = new Point({
+      var poi = new Point({
           longitude: feature.graphic.geometry.longitude,
           latitude: feature.graphic.geometry.latitude,
           spatialReference: { wkid: mapSpatialReference }
       });
+      //var poi = getPoint(feature.graphic.geometry.longitude, feature.graphic.geometry.latitude);
 
       //identify the line vertex with the smallest distance from structure
       var voi;
@@ -636,9 +637,9 @@ require([
         return p;
       });
 
-    } catch (e) { 
-      console.log("error with line calc: " + e.toString());
-    }
+   //} catch (e) { 
+   //   console.log("error with line calc: " + e.toString());
+    //}
 
     var sldistance = sldisttostation(poi);
     output += "<br /><b>Via Straight line:</b> <br />";
@@ -664,7 +665,7 @@ require([
         spatialReference: {wkid: mapSpatialReference}
       });
       var seg = new Polyline();
-	  seg.spatialReference = SpatialReference({wkid: mapSpatialReference });
+	    seg.spatialReference = SpatialReference({wkid: mapSpatialReference });
       seg.addPath([poi, stationPoint]);
       var segLength = geometryEngine.geodesicLength(seg, "miles");
       var out = segLength.toFixed(2) + " to " + stationList[i].name + "<br />";
@@ -675,17 +676,12 @@ require([
 
   function distToStation(vertexOfInterest) {
     var outputDist = [];
-    var pointOfInterest = new Point(vertexOfInterest.coordinate);
+    var pointOfInterest = getPoint(vertexOfInterest.coordinate.longitude, vertexOfInterest.coordinate.latitude);
     var segLength = [];
 
     //for each station get distance to point
     for (var i = 0; i < stationList.length; i++) {
-      var stationPoint = new Point({
-        longitude: stationList[i].longitude,
-        latitude: stationList[i].latitude,
-        spatialReference: {wkid: mapSpatialReference},
-      });
-
+      var stationPoint = getPoint(stationList[i].longitude,stationList[i].latitude);
 
       var stationPoints = [];
       stationPoints.push(stationPoint);
@@ -755,21 +751,19 @@ require([
 
     //only look for faults within the line length
     //loop through topology, accumulating distances
-    var startPt = new Point(startInfo.startPoint[0], startInfo.startPoint[1], {
-      wkid: mapSpatialReference,
-    });
+    var startPt = getPoint(startInfo.startPoint[0], startInfo.startPoint[1]);
 
     curPt = startPt;
     for (let t in topology) {
       var pCoords = lineGeometry[topology[t]].paths[0][0];
-      nextPt = new Point(pCoords[0], pCoords[1], { wkid: mapSpatialReference });
+      nextPt = getPoint(pCoords[0], pCoords[1]);
 
       //determine direction of segment, ignore start
       if (isReversed(curPt, nextPt)) {
         //reverse the paths within this segment.
         lineGeometry[topology[t]].paths[0].reverse();
         var pCoords = lineGeometry[topology[t]].paths[0][0];
-        nextPt = new Point(pCoords[0], pCoords[1], { wkid: mapSpatialReference });
+        nextPt = getPoint(pCoords[0], pCoords[1]);
         //if other endpoint still doesn't match, then throw away this path
         if (isReversed(curPt, nextPt)) {
           return 0;
@@ -779,9 +773,9 @@ require([
 
       for (var i = 0; i <= lenPaths; i++) {
         var pathcoords = lineGeometry[topology[t]].paths[0][i];
-        nextPt = new Point(pathcoords[0], pathcoords[1], { wkid: mapSpatialReference });
+        nextPt = getPoint(pathcoords[0], pathcoords[1]);
         if (curPt) {
-          var seg = new Polyline({ wkid: mapSpatialReference });
+          var seg = new Polyline();
           seg.addPath([curPt, nextPt]);
           var segLength = geometryEngine.geodesicLength(seg, "miles");
           totalLength += segLength;
@@ -2238,7 +2232,10 @@ require([
 
   function isNeighbor(x,y,x1,y1){
     if(useSpanTolerance){
-      if(Math.abs(x-x1) <= spanTolerance && Math.abs(y-y1) <= spanTolerance ) {
+      var pt1 = getPoint(x,y);
+      var pt2 = getPoint(x1,y1);
+
+      if(Math.abs(pt1.latitude-pt2.latitude) <= spanTolerance && Math.abs(pt1.longitude-pt2.longitude) <= spanTolerance ) {
         return true;
       }
     } else {
