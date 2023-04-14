@@ -572,7 +572,7 @@ require([
 			  .tz(timezone)
 			  .format("MM/DD/YYYY HH:mm:ss");
 				let mapname = fiSCADANames.find(
-				  (scmap) => scmap.scadapt === item.Pointname
+				  (scmap) => scmap.scadapt.includes(item.Pointname)
 				).mapname;
 
 				return (
