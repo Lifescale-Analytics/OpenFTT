@@ -1350,6 +1350,11 @@ require([
       if (zoomToFault.toUpperCase() == "N") {
         document.getElementById("autozoom").checked = false;
       }
+      //get fault indicators
+      getFaultIndicators(defaultLineId);
+
+      //get switches
+      getSwitches(defaultLineId);
     } else {
       //populate event time with default value
       populateEvtTime();
