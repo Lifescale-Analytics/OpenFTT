@@ -838,24 +838,7 @@ require([
   
       fiLayer.queryFeatures(fiQuery).then(function (response) {
         response.features.forEach(function (feature) {
-          var statusField = fiFields
-            .filter((f) => f.isStatusFeature)
-            .map((f) => f.fieldName);
-          if (statusField && statusField.length > 0) {
-            if (feature.attributes[statusField[0]] == "N") {
-              var symbol = fiStatusSymbol("OFFLINE");
-  
-              fi = new Graphic({
-                geometry: feature.geometry,
-                symbol: symbol,
-                attributes: feature.attributes,
-                popupTemplate: fiInfoTemplate,
-              });
-              fiStatusLayer.add(fi);
-            } else {
-              getFIStatusPointsFromAPI(feature);
-            }
-          }
+          getFIStatusPointsFromAPI(feature);
         });
       });
   
@@ -915,7 +898,12 @@ require([
       var fiStatus = JSON.parse(rsp);
       fiHealthStatus = getFIServerHealth(fiStatus.healthdata);
       if(fiHealthStatus){
+        var fiPointHealth=getFIPointHealth(fiStatus, feature);
         var symbol = fiStatusSymbol(fiStatus.didAssert);
+
+        if(!fiPointHealth) {
+            symbol = fiStatusSymbol("OFFLINE");
+        }
         feature.symbol = symbol;
         feature.attributes.rawdata = fiStatus.rawdata;
         fiPoints.push(feature);
@@ -927,6 +915,58 @@ require([
     }
   }
 
+  function getFIPointHealth(rsp, feature){
+
+    var defaultStatusField = fiFields
+        .filter((f) => f.isDefaultStatusFeature)
+        .map((f) => f.fieldName);
+
+    var defaultStatus=false;
+
+    if(feature.attributes[defaultStatusField] != "N"){
+        defaultStatus =true;
+    }
+    
+    //check to see if rsp had data, if not use default value
+    if(rsp.rawdata.length > 0 ) { 
+        //identify the status fields from the configuration
+        var statusField = fiFields
+            .filter((f) => f.isStatusFeature && ! f.isDefaultStatusFeature)
+            .map((f) => f.fieldName);
+        // if there are no status fields, then use the default value
+        if (statusField && statusField.length > 0) {
+            for(var status in statusField){
+                //check for status output from FIAPI
+                if(feature.attributes[statusField[status]].includes(",")) {
+                    //split multiple scada points into separate values since that is how they come back from the FIAPI
+                    let scadaHealthPoints = feature.attributes[statusField[status]].split(",");
+                    //loop through health points to find status
+                    for(var hp in scadaHealthPoints){
+                        if(rsp.rawdata.filter((pt) => pt.Pointname === scadaHealthPoints[hp])[0].Value == 0) {
+                            return true;
+                        }
+                    }
+                    return defaultStatus;
+                } else {
+                    //only one status field
+                    let scadaHealthPoint = feature.attributes[statusField[status]];
+                    if(rsp.rawdata.filter((pt) => pt.Pointname === scadaHealthPoint)[0].Value == 0) {
+                        return true;
+                    } else { 
+                        return defaultStatus;
+                    }
+                }
+
+
+            }
+            
+        }
+    }
+
+            
+    return defaultStatus;
+
+  }
   function getFIServerHealth(rsp){
     if(fiHealthCheckPt.length > 0) {
       //find most recent health point entry
@@ -952,6 +992,14 @@ require([
       attributes: feature.attributes,
       popupTemplate: fiStatusTemplate,
     });
+    //check to see if there are already graphics in the status layer, and if so see if they need to be replaced.
+    if(fiStatusLayer.graphics.length > 0){
+        console.log("to here");
+        //fiStatusLayer.graphics.items[0].geometry.x;
+        let eg=fiStatusLayer.graphics.items.find((i) => i.geometry.x==feature.geometry.x && i.geometry.y == feature.geometry.y)
+        fiStatusLayer.remove(eg);
+
+    } 
     fiStatusLayer.add(fi);
   }
 
@@ -1448,15 +1496,15 @@ require([
         canvas.width = imageData.width+300;
 
         //add screenshot to canvas
-		let hdrfont = "bold 12px Arial";
-		let nfont = "12px Arial";
+        let hdrfont = "bold 12px Arial";
+        let nfont = "12px Arial";
 		
         context.putImageData(imageData, 0, 0);
         context.font = "12px Arial";
         context.fillStyle = "#ffffff";
 	
-		var stninfo = document.getElementById("resultstbl");
-		var ltginfo = document.getElementById("resultstblltg");
+        var stninfo = document.getElementById("resultstbl");
+        var ltginfo = document.getElementById("resultstblltg");
 		
 		
 		
@@ -1464,47 +1512,47 @@ require([
         context.fillRect(canvas.width - 300, 0, 300, canvasheight);
         context.fillStyle = "#000";
         const leftmargin = imageData.width+1;
-		const lineheight = 15;
-		var curLine = 15;
+        const lineheight = 15;
+        var curLine = 15;
         let eventTime = document.getElementById("evttime").value;
         context.fillText("Event Time: " + eventTime, leftmargin, curLine);
         let lineID = document.getElementById("lineSelect");
         lineID = lineID.options[lineID.selectedIndex].text;
-		curLine+=lineheight;
+        curLine+=lineheight;
         context.fillText("Line ID: " + lineID, leftmargin, curLine);
 		
-		//get Structure info
-		context.font = hdrfont;
-		curLine +=lineheight;
-		context.fillText("Nearest Structure(s):",leftmargin, curLine);
-		context.font = nfont;
-		hdr = Array.from(stninfo.tHead.rows[0].cells).map(c=> c.innerText).toString();
-		curLine+=lineheight;
-		context.fillText(hdr,leftmargin,curLine);
-		for(i=0;i<stninfo.tBodies[0].rows.length;i++){
-				curLine+=lineheight;
-				color = color2hex(stninfo.tBodies[0].rows[i].cells[0].childNodes[0].style.color.toString());
-				context.fillStyle = color;
-				curRow = Array.from(stninfo.tBodies[0].rows[i].cells).map(c=> c.innerText).toString();
-				context.fillText(curRow,leftmargin,curLine);
-		}
+        //get Structure info
+        context.font = hdrfont;
+        curLine +=lineheight;
+        context.fillText("Nearest Structure(s):",leftmargin, curLine);
+        context.font = nfont;
+        hdr = Array.from(stninfo.tHead.rows[0].cells).map(c=> c.innerText).toString();
+        curLine+=lineheight;
+        context.fillText(hdr,leftmargin,curLine);
+        for(i=0;i<stninfo.tBodies[0].rows.length;i++){
+            curLine+=lineheight;
+            color = color2hex(stninfo.tBodies[0].rows[i].cells[0].childNodes[0].style.color.toString());
+            context.fillStyle = color;
+            curRow = Array.from(stninfo.tBodies[0].rows[i].cells).map(c=> c.innerText).toString();
+            context.fillText(curRow,leftmargin,curLine);
+        }
 		
 		
-		//populate ltg info
-		curLine +=lineheight;
-		context.fillStyle = "#000000";
-		context.font=hdrfont;
+        //populate ltg info
+        curLine +=lineheight;
+        context.fillStyle = "#000000";
+        context.font=hdrfont;
         flt = "Nearest Lightning";
         context.fillText(flt, leftmargin, curLine);
-		context.font=nfont;
-		curLine +=lineheight;
-		flt = Array.from(ltginfo.tHead.rows[0].cells).map(c=> c.innerText).toString();
-		context.fillText(flt, leftmargin, curLine);
-		context.fillStyle = "#000000";
-		
+        context.font=nfont;
+        curLine +=lineheight;
+        flt = Array.from(ltginfo.tHead.rows[0].cells).map(c=> c.innerText).toString();
+        context.fillText(flt, leftmargin, curLine);
+        context.fillStyle = "#000000";
+        
         for (i=0;i<ltginfo.tBodies[0].rows.length;i++) {
-		  curLine +=lineheight;
-		  flt = Array.from(ltginfo.tBodies[0].rows[i].cells).map(c=>c.innerText).toString();
+          curLine +=lineheight;
+          flt = Array.from(ltginfo.tBodies[0].rows[i].cells).map(c=>c.innerText).toString();
           context.fillText(flt, leftmargin, curLine);
         }
 
@@ -1577,12 +1625,12 @@ require([
 
   function populateLineDropDown(showLoader = false) {
     lineLayer.definitionExpression = "1=1";
-	lineLayer.createFeatureLayer().then(function (lineFeatureLayer){
+	  lineLayer.createFeatureLayer().then(function (lineFeatureLayer){
       var query = lineFeatureLayer.createQuery();
-	  query.orderByFields = lineSortFields;
+	    query.orderByFields = lineSortFields;
       query.outFields = lineOutFields;
-	  query.returnGeometry=false;
-	  query.returnDistinctValues=true;
+	    query.returnGeometry=false;
+	    query.returnDistinctValues=true;
 
       lineFeatureLayer
         .queryFeatureCount()
@@ -1674,10 +1722,10 @@ require([
 
   function setStructureDefinitionExpression(lineID) {
     //if the structure layer uses lineids for filtering, if not use proximity
-	if(!useStructureProximity) { 
+	  if(!useStructureProximity) { 
       structureLayer.definitionExpression = `${structureKeyField} = '${lineID}'`;
-	  if (!structureLayer.visible) {
-		structureLayer.visible = true;
+      if (!structureLayer.visible) {
+		    structureLayer.visible = true;
       }
       return queryForStructureGeometries();
     } else {
@@ -1695,8 +1743,8 @@ require([
       return gsvc.buffer(params).then(function (lineBuffers){
         lineBuffer = lineBuffers[0];
         return queryForStructuresByProx(lineBuffer)
-			   .then(getUniqueValues)
-               .then(setStructureDefByProx);
+			        .then(getUniqueValues)
+              .then(setStructureDefByProx);
 
       });
 
@@ -1706,21 +1754,21 @@ require([
   }
 
   function setStructureDefByProx(values){
-	var defExpr="";
-	values.forEach(function(value) {
+    var defExpr="";
+    values.forEach(function(value) {
     if(!isNaN(value)){
       defExpr += `${structureKeyField} = ${value} OR `;
     } else {
       defExpr += `${structureKeyField} = '${value}' OR `;
     }
 		
-	});
-	defExpr = defExpr.substring(0,defExpr.length -4);
-	structureLayer.definitionExpression = defExpr;	  
-	if (!structureLayer.visible) {
-		structureLayer.visible = true;
+	  });
+    defExpr = defExpr.substring(0,defExpr.length -4);
+    structureLayer.definitionExpression = defExpr;	  
+    if (!structureLayer.visible) {
+      structureLayer.visible = true;
     }
-	return queryForStructureGeometries();
+	  return queryForStructureGeometries();
   }
 
   function queryForStructuresByProx(linebuffer){
@@ -1732,7 +1780,7 @@ require([
       var features=response.features;
 
       var values = features.map(function (feature){
-		return feature.attributes[structureKeyField];
+		    return feature.attributes[structureKeyField];
       });
 	  return values;
     });
@@ -1762,17 +1810,17 @@ require([
       var values = features.map(function (feature) {
         var fields = [];
         stationFields.map((f) => {
-			if(f.isAttribute) {
-				var curVal = feature.attributes[f.name];
-				fields.push(curVal);
-            }
+          if(f.isAttribute) {
+            var curVal = feature.attributes[f.name];
+            fields.push(curVal);
+          }
 			
         });
-		//get geometry from the map service instead of the attributes.
-		var lat=feature.geometry.latitude;
-		fields.push(lat);
-		var lon=feature.geometry.longitude;
-		fields.push(lon);
+        //get geometry from the map service instead of the attributes.
+        var lat=feature.geometry.latitude;
+        fields.push(lat);
+        var lon=feature.geometry.longitude;
+        fields.push(lon);
         return fields.join("|");
       });
       return values;
@@ -2259,43 +2307,43 @@ require([
     var reverseFlag = false;
     var closestLine = 0;
     var closestPath = 0;
-	var first=true;
+	  var first=true;
 
     //loop through line line ends, determine which end of which path is the start location
 
-	//assume point is wgs84, convert to mapunits
-	var startpoint=new Point({latitude: startPt[0].latitude,longitude: startPt[0].longitude});
+    //assume point is wgs84, convert to mapunits
+    var startpoint=new Point({latitude: startPt[0].latitude,longitude: startPt[0].longitude});
 
     for (let ln in lineEnds) {
-	  var studyPointsl1=[];
+	    var studyPointsl1=[];
       var studyPointsl2=[];
-	  studyPointsl1.push(startpoint);
-	  studyPointsl2.push(startpoint);
+      studyPointsl1.push(startpoint);
+      studyPointsl2.push(startpoint);
 
-	  //first end
-	  var end1pl=new Polyline();
-	  var lineend1=getPoint(lineEnds[ln].startPt[0], lineEnds[ln].startPt[1]);
-	  
-	  studyPointsl1.push(lineend1);
+      //first end
+      var end1pl=new Polyline();
+      var lineend1=getPoint(lineEnds[ln].startPt[0], lineEnds[ln].startPt[1]);
+      
+      studyPointsl1.push(lineend1);
       end1pl.addPath(studyPointsl1);
 
-	  //other end
-	  
-	  var end2pl = new Polyline();
-	  var lineend2= getPoint(lineEnds[ln].endPt[0],lineEnds[ln].endPt[1]);
-	  
-	  studyPointsl2.push(lineend2);
+      //other end
+      
+      var end2pl = new Polyline();
+      var lineend2= getPoint(lineEnds[ln].endPt[0],lineEnds[ln].endPt[1]);
+      
+      studyPointsl2.push(lineend2);
       end2pl.addPath(studyPointsl2);
 
 
       dist1 = geometryEngine.geodesicLength(end1pl, "feet");
       dist2 = geometryEngine.geodesicLength(end2pl, "feet");
 
-	  //init the distance on the first run through the loop
-	  if(first){
-		distTot=dist2;
-		first=false;
-	  }
+  	  //init the distance on the first run through the loop
+      if(first){
+        distTot=dist2;
+        first=false;
+      }
 
       //determine if this is the shortest distance so far
       if (dist1 <= distTot || dist2 <= distTot) {
@@ -2718,12 +2766,12 @@ require([
       
       if(xmlDoc.getElementsByTagName("error-message").length > 0){
         var e = xmlDoc.getElementsByTagName("error-message")[0].childNodes[0].nodeValue;
-		//ignore no data found message, handled elsewhere
-		if(e!="No data found for the request."){
-			if(e.length > 0 ){
-			  alert("TXD Error: " + e);
-			}
-		}
+        //ignore no data found message, handled elsewhere
+        if(e!="No data found for the request."){
+          if(e.length > 0 ){
+            alert("TXD Error: " + e);
+          }
+        }
       }
 
      
@@ -2763,10 +2811,10 @@ require([
           }
         } else {
           //for data prefiltered by api
-		  //for data prefiltered by api
-		  var curdatetime = r[i].getElementsByTagName("date")[0].childNodes[0].nodeValue + " " + r[i].getElementsByTagName("time")[0].childNodes[0].nodeValue;
-		  var lTime = moment.tz(curdatetime,"MMM DD, YYYY HH:mm:ss:SSS","GMT");
-		  var curTime = lTime.clone().tz(timezone).format("MM/DD/YYYY HH:mm:ss.SSS");
+          //for data prefiltered by api
+          var curdatetime = r[i].getElementsByTagName("date")[0].childNodes[0].nodeValue + " " + r[i].getElementsByTagName("time")[0].childNodes[0].nodeValue;
+          var lTime = moment.tz(curdatetime,"MMM DD, YYYY HH:mm:ss:SSS","GMT");
+          var curTime = lTime.clone().tz(timezone).format("MM/DD/YYYY HH:mm:ss.SSS");
           var curSecs = curTime.split(":")[2];
           var semimajor = parseFloat(r[i].getElementsByTagName("semi-major-axis")[0].childNodes[0].nodeValue);
           var semiminor = parseFloat(r[i].getElementsByTagName("semi-minor-axis")[0].childNodes[0].nodeValue);
