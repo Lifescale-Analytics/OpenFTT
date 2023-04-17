@@ -149,7 +149,7 @@
 			"outfield": true
 		}
 	],
-	"useStationProximity": "false",
+	"useStationFilter": "true",
 	"stationFilterField": "ITS_LINE_ID",
 	"stationRender": "{\"type\":\"simple\",\"symbol\":{\"type\":\"simple-marker\",\"style\":\"square\",\"outline\":{\"color\":[0,92,230,1]},\"size\":6,\"color\":[0,92,230,1]}}",
 	"useStationLabel":true,

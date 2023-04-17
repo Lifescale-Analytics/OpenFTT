@@ -272,7 +272,7 @@ require([
     .filter((f) => f.key)
     .map((f) => f.name)[0];
 
-  var useStationProximity = data.useStationProximity;
+  var useStationFilter = data.useStationFilter;
   var stationFilterField = data.stationFilterField;
   var stationOutFields = stationFields
     .filter((f) => f.outfield)
@@ -1157,9 +1157,6 @@ require([
               if(useStructureProximity){
                 structureGeometries = setStructureDefinitionExpression(lineInfo);
               }
-              if(!useStationProximity) {
-                return populateStationDropDown(lineID);
-              }
               return populateStationDropDown(lineInfo);
             }
           );
@@ -1462,9 +1459,6 @@ require([
           }
 		  
 		      //get stations
-          if(!useStationProximity){
-            return populateStationDropDown(defaultLineId);            
-          }
           return populateStationDropDown(lineInfo);
 
         }
@@ -1704,7 +1698,6 @@ require([
   }
 
   function populateStationDropDown(lineGeometries) {
-    if(useStationProximity){
       //buffer lineGeometries
       var params = new BufferParameters({
         distances: [1000],
@@ -1727,17 +1720,6 @@ require([
           .then(getStartStation);
       });
 
-    } else {
-      //use txline id to filter station list
-      stationLayer.definitionExpression = `${stationFilterField} = '${lineGeometries}'`;
-      var query= stationLayer.createQuery();
-      query.outFields=stationOutFields;
-      stationGeometries = getStationValuesFromQuery(query)
-        .then(getUniqueValues2)
-        .then(addToStationSelect)
-        .then(getStartStation);
-
-    }
   }
 
   function setStructureDefinitionExpression(lineID) {
@@ -1821,6 +1803,12 @@ require([
 
   function getStationValuesFromBuffer(lineBuffer, getStationValuesFields = "*") {
     var query = stationLayer.createQuery();
+    if(useStationFilter){
+      //use txline id to filter station list
+      var lineid = lineLayer.definitionExpression.split("=")[1].replaceAll("'","").trim()
+      query.where = `${stationFilterField} like '%${lineid}%'`;
+    }
+
     query.geometry = lineBuffer;
     query.outFields = stationOutFields;
     query.spatialRelationship = "intersects";
