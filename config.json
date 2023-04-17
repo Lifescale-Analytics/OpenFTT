@@ -148,6 +148,8 @@
 			"outfield": true
 		}
 	],
+	"useStationProximity": "false",
+	"stationFilterField": "ITS_LINE_ID",
 	"stationRender": "{\"type\":\"simple\",\"symbol\":{\"type\":\"simple-marker\",\"style\":\"square\",\"outline\":{\"color\":[0,92,230,1]},\"size\":6,\"color\":[0,92,230,1]}}",
 	"useStationLabel":true,
 	"stationLabel": "{\"symbol\":{\"type\":\"text\",\"color\":\"black\",\"font\":{\"family\":\"Arial\",\"size\":12}},\"labelPlacement\":\"above-center\",\"labelExpression\":\"[NAME]\"}",

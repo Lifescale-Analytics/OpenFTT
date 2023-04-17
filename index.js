@@ -272,6 +272,8 @@ require([
     .filter((f) => f.key)
     .map((f) => f.name)[0];
 
+  var useStationProximity = data.useStationProximity;
+  var stationFilterField = data.stationFilterField;
   var stationOutFields = stationFields
     .filter((f) => f.outfield)
     .map((f) => f.name);
@@ -1151,14 +1153,16 @@ require([
         //highlight line
         lineGeometries = setLineDefinitionExpression(lineID)
           .then(function(lineInfo){
-			
-			//highlight structures if using proximity
-			if(useStructureProximity){
-				structureGeometries = setStructureDefinitionExpression(lineInfo);
-			}
-            return populateStationDropDown(lineInfo);
-          }
-        );
+              //highlight structures if using proximity
+              if(useStructureProximity){
+                structureGeometries = setStructureDefinitionExpression(lineInfo);
+              }
+              if(!useStationProximity) {
+                return populateStationDropDown(lineID);
+              }
+              return populateStationDropDown(lineInfo);
+            }
+          );
 		
 		//highlight structures if using key
 		if(!useStructureProximity){
@@ -1453,11 +1457,14 @@ require([
         .then(function(lineInfo){
 
           //highlight structures if using proximity
-		  if(useStructureProximity){
-			structureGeometries = setStructureDefinitionExpression(lineInfo);
-		  }
+          if(useStructureProximity){
+          structureGeometries = setStructureDefinitionExpression(lineInfo);
+          }
 		  
-		  //get stations
+		      //get stations
+          if(!useStationProximity){
+            return populateStationDropDown(defaultLineId);            
+          }
           return populateStationDropDown(lineInfo);
 
         }
@@ -1697,27 +1704,40 @@ require([
   }
 
   function populateStationDropDown(lineGeometries) {
-    //buffer lineGeometries
-    var params = new BufferParameters({
-      distances: [1000],
-      unit: "feet",
-      geodesic: true,
-      geometries: lineGeometries,
-      unionResults: true,
-      bufferSpatialReference: bufferSpatialReference,
-      outSpatialReference: mapSpatialReference,
-    });
+    if(useStationProximity){
+      //buffer lineGeometries
+      var params = new BufferParameters({
+        distances: [1000],
+        unit: "feet",
+        geodesic: true,
+        geometries: lineGeometries,
+        unionResults: true,
+        bufferSpatialReference: bufferSpatialReference,
+        outSpatialReference: mapSpatialReference,
+      });
 
-    gsvc.buffer(params).then(function (lineBuffers) {
-      lineBuffer = lineBuffers[0];
-      //bufferLayer.add(new Graphic({geometry: lineBuffer}));
-      zoomTo(lineBuffer);
+      gsvc.buffer(params).then(function (lineBuffers) {
+        lineBuffer = lineBuffers[0];
+        //bufferLayer.add(new Graphic({geometry: lineBuffer}));
+        zoomTo(lineBuffer);
 
-      stationGeometries = getStationValues(lineBuffer)
+        stationGeometries = getStationValuesFromBuffer(lineBuffer)
+          .then(getUniqueValues2)
+          .then(addToStationSelect)
+          .then(getStartStation);
+      });
+
+    } else {
+      //use txline id to filter station list
+      stationLayer.definitionExpression = `${stationFilterField} = '${lineGeometries}'`;
+      var query= stationLayer.createQuery();
+      query.outFields=stationOutFields;
+      stationGeometries = getStationValuesFromQuery(query)
         .then(getUniqueValues2)
         .then(addToStationSelect)
         .then(getStartStation);
-    });
+
+    }
   }
 
   function setStructureDefinitionExpression(lineID) {
@@ -1799,14 +1819,19 @@ require([
       });
   }
 
-  function getStationValues(lineBuffer, getStationValuesFields = "*") {
+  function getStationValuesFromBuffer(lineBuffer, getStationValuesFields = "*") {
     var query = stationLayer.createQuery();
     query.geometry = lineBuffer;
     query.outFields = stationOutFields;
     query.spatialRelationship = "intersects";
+    return getStationValuesFromQuery(query);
+
+  }
+
+  function getStationValuesFromQuery(query){
     return stationLayer.queryFeatures(query).then(function (response) {
       var features = response.features;
-
+  
       var values = features.map(function (feature) {
         var fields = [];
         stationFields.map((f) => {
@@ -1814,7 +1839,7 @@ require([
             var curVal = feature.attributes[f.name];
             fields.push(curVal);
           }
-			
+       
         });
         //get geometry from the map service instead of the attributes.
         var lat=feature.geometry.latitude;
@@ -1826,6 +1851,8 @@ require([
       return values;
     });
   }
+
+
 
   function addToStationSelect(values) {
     var option = document.createElement("option");
