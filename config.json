@@ -68,7 +68,8 @@
 			"fieldName": "OP",
 			"label": "Operational: ",
 			"forDisplay": false,
-			"isStatusFeature": true
+			"isStatusFeature": true,
+			"isDefaultStatusFeature": true
 		},
 		{
 			"fieldName": "SCADA_P1",

@@ -1634,10 +1634,10 @@ require([
     lineLayer.definitionExpression = "1=1";
 	  lineLayer.createFeatureLayer().then(function (lineFeatureLayer){
       var query = lineFeatureLayer.createQuery();
-	    query.orderByFields = lineSortFields;
+      query.orderByFields = lineSortFields;
       query.outFields = lineOutFields;
-	    query.returnGeometry=false;
-	    query.returnDistinctValues=true;
+      query.returnGeometry=false;
+      query.returnDistinctValues=true;
 
       lineFeatureLayer
         .queryFeatureCount()
@@ -1745,7 +1745,7 @@ require([
 	  if(!useStructureProximity) { 
       structureLayer.definitionExpression = `${structureKeyField} = '${lineID}'`;
       if (!structureLayer.visible) {
-		    structureLayer.visible = true;
+        structureLayer.visible = true;
       }
       return queryForStructureGeometries();
     } else {
@@ -1763,7 +1763,7 @@ require([
       return gsvc.buffer(params).then(function (lineBuffers){
         lineBuffer = lineBuffers[0];
         return queryForStructuresByProx(lineBuffer)
-			        .then(getUniqueValues)
+              .then(getUniqueValues)
               .then(setStructureDefByProx);
 
       });
