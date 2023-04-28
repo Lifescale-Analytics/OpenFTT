@@ -228,6 +228,9 @@ require([
   var txduid = data.txduid;
   var txdpwd = data.txdpwd;
   var txdenabled = data.txdenabled;
+	var integratorenabled = data.integratorenabled;
+	var integratorapiauthurl = data.integratorapiauthurl.replace("serverIP", serverIP);
+	var integratorbboxurl = data.integratorbboxurl.replace("serverIP", serverIP);
   var mapSpatialReference = parseInt(data.mapSpatialReference);
   var bufferSpatialReference = parseInt(data.bufferSpatialReference);
   var lightningBufferSpatialReference = parseInt(data.lightningBufferSpatialReference);
@@ -2657,13 +2660,151 @@ require([
   }
 
   function lightningSearchAdv() {
-    if (txdenabled) {
+    if (integratorenabled) {
+      vapipointsearch();
+
+    } else if (txdenabled) {
       maxDiff = 0;
       var req = makeTXDpointrequest();
       var rsp = sendTXDrequest(req, "ltgevttime");
     } else {
       console.log("Lightning search feature not enabled");
     }
+  }
+
+  //vaisala integrator api
+  function vapipointsearch(){
+    //get auth token
+    var xhttp = new XMLHttpRequest();
+    xhttp.timeout=15000;
+    xhttp.ontimeout = (e) => {
+      alert("Vaisala Integrator API Error: No response from authorization server");
+    }
+    xhttp.onreadystatechange=function() {
+      if(this.readyState==4 && this.status==200) {
+        //if successfully authorized, perform search
+        sendVAPIpointrequest(this.response);
+      }
+      //todo: build out responses for other statuses (400 - Bad request, 401 - Authen, 404 - NF, 500 - Server).
+
+    };
+    //send request
+    xhttp.open("GET",integratorapiauthurl,true);
+    xhttp.responseType='json';
+    xhttp.send();
+
+  }
+
+
+  function makeVAPIpointrequest() {
+    //get parameters
+    var evttime = document.getElementById("ltgevttime");
+    var evttimestop = document.getElementById("ltgevttimestop");
+
+    var evttimeval = moment.tz(
+      evttime.value,
+      "MM/DD/YYYY HH:mm:ss.SSS",
+      timezone
+    );
+    var gmtString = evttimeval
+      .clone()
+      .tz("GMT")
+      .format();
+
+    var evttimevalstop = moment.tz(
+      evttimestop.value,
+      "MM/DD/YYYY HH:mm:ss.SSS",
+      timezone
+    );
+    var gmtStringstop = evttimevalstop
+      .clone()
+      .tz("GMT")
+      .format();
+
+    var lat = document.getElementById("ltgLat").value;
+    var lon = document.getElementById("ltgLon").value;
+    var dist = document.getElementById("ltgDistance").value;
+    var radiusm = parseFloat(dist) * 1609.34;
+
+    //return qs
+    return `start=${gmtString}&end=${gmtStringstop}&longitude=${lon}&latitude=${lat}&radius=${radiusm}&inclEllipse=none&fields=analysis&page=0&size=2000`;
+
+  }
+
+  function sendVAPIpointrequest(authresponse){
+    var xhttp = new XMLHttpRequest();
+    xhttp.timeout=15000;
+    xhttp.ontimeout = (e) => {
+      alert("Vaisala Integrator API Error: No response from server.");
+    }
+    xhttp.onreadystatechange = function() {
+      if (this.readyState == 4 && this.status == 200) {
+        processVAPIResponse(this.response);
+      }
+      //todo: build out responses for other statuses (400 - Bad request,401 - Authen, 403 - Author, 404 - Not found )
+    };
+
+    var authtoken = authresponse.access_token;
+    var qs=makeVAPIpointrequest();
+    var apiurl = `${integratorbboxurl}${qs}`;
+    xhttp.open("GET",apiurl,true);
+    xhttp.setRequestHeader("Authorization", "Bearer " + authtoken);
+    xhttp.responseType='json';
+    xhttp.send();
+
+  }
+
+  //processVAPI response
+  function processVAPIResponse(rsp){
+    ltgPoints =[];
+    ltgdata = rsp;  //response should already be json object.
+    //loop through events
+    for(i=0;i<ltgdata.length;i++){
+      var lTime = moment(ltgdata[i].time);
+      var curTime = lTime.clone().tz(timezone).format("MM/DD/YYYY HH:mm:ss.SSS");
+      ltgPoints.push({
+        id: i,
+        lat: ltgdata[i].location.coordinates[1],
+        lon: ltgdata[i].location.coordinates[0],
+        signal: ltgdata[i].signalStrengthKA,
+        time: curTime,
+        smin: ltgdata[i].ellSemiMinM,
+        smaj: ltgdata[i].ellSemiMajM,
+        angle: degree2Radium(ltgdata[i].ellAngleDeg),
+      });
+
+    }
+
+    //plot lightning
+    if (ltgPoints.length > 0) {
+      plotLightning(ltgPoints);
+    } else {
+      ltgPoints.push({
+        id: "No Lightning Found",
+        lat: "",
+        lon: "",
+        signal: "",
+        time: "",
+      });
+      var ltgtresultdiv = document.getElementById("ltgresults");
+      ltgtresultdiv.style.display = "block";
+      //resize the infoDiv
+      getInfoDivMinHeight();
+
+      var tbl = document
+        .getElementById("resultstblltg")
+        .getElementsByTagName("tbody")[0];
+      var row = tbl.insertRow(tbl.rows.length);
+      var str = row.insertCell(0);
+      var tim = row.insertCell(1);
+      str.innerHTML = "<font color='red'>No lightning found.</font>";
+      tim.innerHTML = document.getElementById(starttimefield).value;
+      var outputType = getUrlParameter("output");
+      if (outputType.length > 0 && outputType == "jpg") {
+        getOutput();
+      }
+    }
+
   }
 
   //txd100 API third party url
