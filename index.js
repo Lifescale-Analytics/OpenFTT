@@ -906,7 +906,7 @@ require([
         var fiPointHealth=getFIPointHealth(fiStatus, feature);
         var symbol = fiStatusSymbol(fiStatus.didAssert);
 
-        if(!fiPointHealth) {
+        if(!fiPointHealth || rsp.indexOf("SCAN INHIBIT") > 0) {
             symbol = fiStatusSymbol("OFFLINE");
         }
         feature.symbol = symbol;
