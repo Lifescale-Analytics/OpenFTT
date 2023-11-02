@@ -111,8 +111,15 @@
 			"isStatusFeature": false
 		}
 	],
-	"switchEnabled":false,
-	"switchPrimaryKey":"ITS_TL_ID",
+	"switchEnabled":true,
+	"switchKeys": [
+		{
+			"name": "ITS_TL_ID"
+		},
+		{
+			"name": "SECONDARY_ITS_TL_ID"
+		}
+	],
 	"switchRender": "{\"type\":\"simple\",\"symbol\":{\"type\":\"simple-marker\",\"style\":\"diamond\",\"outline\":{\"color\":[0,127,81,1]},\"color\":[0,127,81,0.7]}}",
 	"useSwitchLabel":true,
 	"switchLabel": "{\"symbol\":{\"type\":\"text\",\"color\":\"black\",\"font\":{\"family\":\"Arial\",\"size\":12}},\"labelPlacement\":\"above-center\",\"labelExpression\":\"[NAME]\"}",

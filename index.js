@@ -240,7 +240,7 @@ require([
   var lineLayerID = parseInt(data.lineLayerID);
   var structureLayerID = parseInt(data.structureLayerID);
   var switchLayerID = parseInt(data.switchLayerID);
-  var switchPrimaryKey = data.switchPrimaryKey;
+  var switchKeys = data.switchKeys;
   var switchEnabled = data.switchEnabled;
   var useSwitchLabel = data.useSwitchLabel;
   var fiLayerID = parseInt(data.fiLayerID);
@@ -828,7 +828,7 @@ require([
 
   function setSwitchDefinitionExpression(lineID) {
     if(switchEnabled){
-      switchLayer.definitionExpression = `${switchPrimaryKey} = '${lineID}'`;
+      switchLayer.definitionExpression = switchKeys.map((key) => key.name = `${key.name} = '${lineID}'`).join(' OR ');
       if (!switchLayer.visible) {
         switchLayer.visible = true;
       }
