@@ -828,7 +828,7 @@ require([
 
   function setSwitchDefinitionExpression(lineID) {
     if(switchEnabled){
-      switchLayer.definitionExpression = switchKeys.map((key) => key.name = `${key.name} = '${lineID}'`).join(' OR ');
+      switchLayer.definitionExpression = switchKeys.map((key) => `${key.name} = '${lineID}'`).join(' OR ');
       if (!switchLayer.visible) {
         switchLayer.visible = true;
       }
