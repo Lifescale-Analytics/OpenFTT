@@ -6,7 +6,7 @@
       <meta http-equiv="Pragma" content="no-cache" />
       <meta http-equiv="Expires" content="-1" />
       <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no" />
-      <title>Open Fault Trace Tool: API 2.22</title>
+      <title>Open Fault Trace Tool: API 2.23</title>
       <link rel="stylesheet" href="style.css">
       <link rel="icon" type="image/x-icon" href="./favicon.ico">
       <link rel="stylesheet" href="https://js.arcgis.com/4.14/esri/themes/light/main.css">
@@ -14,6 +14,7 @@
       <script src="./libraries/jquery-ui.min.js"></script>
       <script src="./libraries/moment.js"></script>
       <script src="./libraries/moment-timezone-with-data.js"></script>
+      <script src="./libraries/jquery.csv.min.js"></script>
       <script src="https://js.arcgis.com/4.14/"></script>
       <script src="fuzzyset.js"></script>
       <script src ="index.js" type="text/javascript"></script>
@@ -33,6 +34,7 @@
          <div id="btnPanel" class="tab">
             <button class="tablinks" onclick="openTab(event,'fltPanel');" id="defaultOpen">Faults</button>
             <button class="tablinks" onclick="openTab(event,'ltgPanel');" id="lightningPanel">Lightning</button>
+            <button class="tablinks" onclick="openTab(event,'dataPanel');" id="dataPanelbtn">Add Data</button>
             <button class="tablinks" onclick="openTab(event,'bookmarkPanel');">Bookmark</button>
             <button class="tablinks" onclick="openTab(event,'legendPanel');">Legend</button>
             <button class="tablinks" onclick="openTab(event,'toolPanel');">Tools</button>
@@ -101,6 +103,23 @@
                   </td>
                </tr>
             </table>
+         </div>
+         <div id="dataPanel" class="tabcontent">
+            <form enctype="multipart/form-data" method="post" id="uploadForm">
+               <div class="field">
+                 <label class="file-upload">
+                   <span><strong>Add File</strong></span>
+                   <input type="file" name="file" id="inFile" />
+                 </label>
+               </div>
+             </form>
+             <span
+               class="file-upload-status"
+               style="opacity: 1"
+               id="upload-status"
+             ></span>
+             <div id="fileInfo"></div>
+         </div>
          </div>
          <div id="bookmarkPanel" class="tabcontent">
             <input id="bookmarklink" type="text" size="75" value="">

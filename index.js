@@ -103,8 +103,6 @@ function getInfoDivMinHeight(){
     minHeight+=300;
   }
 
-
-
   var infoDiv = $("#infoDiv");
   infoDiv.height(minHeight);
   infoDiv.draggable().resizable({
@@ -322,6 +320,7 @@ require([
   var bookmarkParams = [];
   var bookmarkFuncsWithBookmark = [];
   var loader = $("#loader");
+  var csvData;
 
   //change color for multi-endied fault location
   //var faultLocID = 0;
@@ -381,6 +380,18 @@ require([
       size: 8,
     },
   };
+
+  //File Upload
+  document.getElementById("uploadForm").addEventListener("change", (event) => {
+    var reader = new FileReader();
+    reader.onload = (event) => {
+      csvData = $.csv.toObjects(event.target.result);
+    }
+    reader.onerror = (err) => {
+      alert(JSON.stringify(err));
+    }
+    event.target.files.length > 0 && reader.readAsText(event.target.files[0]);
+  });
 
   function fiStatusSymbol(status) {
     var curStatus = status.toUpperCase();
@@ -554,8 +565,6 @@ require([
       fiStatusLayer,
     ],
   });
-
-  
 
   //ui components
   function displayFIInfo(feature) {
