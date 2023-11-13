@@ -229,6 +229,7 @@ require([
 	var integratorenabled = data.integratorenabled;
 	var integratorapiauthurl = data.integratorapiauthurl.replace("serverIP", serverIP);
 	var integratorbboxurl = data.integratorbboxurl.replace("serverIP", serverIP);
+  var integratorpolyurl = data.integratorpolyurl.replace("serverIP", serverIP);
   var mapSpatialReference = parseInt(data.mapSpatialReference);
   var bufferSpatialReference = parseInt(data.bufferSpatialReference);
   var lightningBufferSpatialReference = parseInt(data.lightningBufferSpatialReference);
@@ -2634,6 +2635,8 @@ require([
         unionResults: true,
         bufferSpatialReference: bufferSpatialReference,
         outSpatialReference: lightningBufferSpatialReference,
+        req: null,
+        rsp: null,
       });
 
       gsvc
@@ -2660,8 +2663,16 @@ require([
           lineBuffer = linebuffers;
           maxDiff =
             parseInt(document.getElementById("timewindow").value) / 1000;
-          var req = makeTXDpolyrequest(lineBuffer);
-          var rsp = sendTXDrequest(req, "evttime");
+
+          //Split on VAPI variable here
+          if (integratorenabled) {
+            req = makeVAPIpolyrequest(linebuffer);
+            rsp = sendVAPIpolyrequest(req, "evttime");
+          } else {
+            req = makeTXDpolyrequest(lineBuffer);
+            rsp = sendTXDrequest(req, "evttime");
+          }
+
         });
     } else {
       console.log("Lightning search feature not enabled");
@@ -2704,7 +2715,7 @@ require([
 
   }
 
-
+  //VAPI Point Functions
   function makeVAPIpointrequest() {
     //get parameters
     var evttime = document.getElementById("ltgevttime");
@@ -2761,6 +2772,75 @@ require([
     xhttp.responseType='json';
     xhttp.send();
 
+  }
+
+  //VAPI Poly Functions
+  function makeVAPIpolyrequest() {
+    var reqJSON = {
+      "geometry" : {
+        "type" : "Polygon",
+        "coordinates": []
+      }
+    };
+    for (i = 0; i < lineBuffers[0].length; i++) {
+      reqJSON.geometry.coordinates.push(lineBuffer.rings[0][i][1].toFixed(4), lineBuffer.rings[0][i][0].toFixed(4));
+    }
+
+    return reqJSON;
+  }
+  
+  function makeVAPIquerystring(){
+    var evttime = document.getElementById("ltgevttime");
+    var evttimestop = document.getElementById("ltgevttimestop");
+
+    var evttimeval = moment.tz(
+      evttime.value,
+      "MM/DD/YYYY HH:mm:ss.SSS",
+      timezone
+    );
+    var gmtString = evttimeval
+      .clone()
+      .tz("GMT")
+      .format();
+
+    var evttimevalstop = moment.tz(
+      evttimestop.value,
+      "MM/DD/YYYY HH:mm:ss.SSS",
+      timezone
+    );
+    var gmtStringstop = evttimevalstop
+      .clone()
+      .tz("GMT")
+      .format();
+    
+    var qs = `start=${gmtString}&end=${gmtStringstop}`
+    return qs;
+  }
+
+  function sendVAPIpolyrequest(authresponse) {
+    var xhttp = new XMLHttpRequest();
+    xhttp.timeout=15000;
+    xhttp.ontimeout = (e) => {
+      alert("Vaisala Integrator API Error: No response from server.");
+    }
+    xhttp.onreadystatechange = function() {
+      if (this.readyState == 4 && this.status == 200) {
+        processVAPIResponse(this.response);
+      }
+      //todo: build out responses for other statuses (400 - Bad request,401 - Authen, 403 - Author, 404 - Not found )
+    };
+
+    var authtoken = authresponse.access_token;
+    var body=makeVAPIpolyrequest();
+    var qs=makeVAPIquerystring();
+    var apiurl = `${integratorpolyurl}${qs}`;
+    xhttp.open("POST",apiurl,true);
+    xhttp.setRequestHeader("Accept", "application/geo+json");
+    xhttp.setRequestHeader("Content-Type", "application/json");
+    xhttp.setRequestHeader("Authorization", "Bearer " + authtoken);
+    xhttp.body = body;
+    xhttp.responseType='json';
+    xhttp.send();
   }
 
   //processVAPI response
