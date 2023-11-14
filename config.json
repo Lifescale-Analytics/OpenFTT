@@ -1,28 +1,28 @@
 {
-	"servername": "https://msi:6443",
+	"servername": "http://msi:6080",
 	"useProxy": true,
 	"proxyURL": "serverIParcgisproxy/proxy.ashx",
 	"baseURL": "servername/arcgis/rest/services",
 	"gsvcURL": "baseURL/Utilities/Geometry/GeometryServer",
 	"txdurl1": "serverIParcgisproxy/proxy.ashx?https://txd.vaisala.com/txd100/xml",
 	"txdurl": "serverIPOpenFTT/demo.xml",
-	"integratorenabled" : "true",
+	"integratorenabled" : true,
 	"integratorapiauthurl" : "serverIParcgisproxy/proxy.ashx?https://ltg-auth.vaisala.com/api/v1/auth/token?application=ltg-api&username=<<USERNAME>>&password=<<PASSWORD>>",
 	"integratorbboxurl" : "serverIParcgisproxy/proxy.ashx?https://ltg.vaisala.com/realtime/merge/api/v1/ltgs/radius?",
 	"integratorpolyurl" : "serverIParcgisproxy/proxy.ashx?https://ltg.vaisala.com/realtime/merge/api/v1/ltgs/geometry?",
 	"locatorURL": "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer",
 	"fiURL": "serverIP/fiapi/default.aspx?",
-	"mapServerURL": "baseURL/FTT3857/MapServer",
+	"mapServerURL": "baseURL/OpenFTT/MapServer",
 	"mapSpatialReference":"3857",
 	"bufferSpatialReference":"4326",
 	"lightningBufferSpatialReference":"3857",
 	"lightningPlotSpatialReference":"4326",
 	"printServiceURL": "https://utility.arcgisonline.com/arcgis/rest/services/Utilities/PrintingTools/GPServer/Export%20Web%20Map%20Task",
 	"apiKey":"",
-	"stationLayerID": "1",
+	"stationLayerID": "6",
 	"lineLayerID": "4",
-	"structureLayerID": "2",
-	"switchLayerID": "0",
+	"structureLayerID": "5",
+	"switchLayerID": "3",
 	"fiLayerID": "3",
 	"maxRecordCount": "2000",
 	"faultLocID": "0",
@@ -112,7 +112,7 @@
 			"isStatusFeature": false
 		}
 	],
-	"switchEnabled":true,
+	"switchEnabled":false,
 	"switchKeys": [
 		{
 			"name": "ITS_TL_ID"
@@ -160,7 +160,7 @@
 			"outfield": true
 		}
 	],
-	"useStationFilter": "true",
+	"useStationFilter": false,
 	"stationFilterField": "ITS_LINE_ID",
 	"stationRender": "{\"type\":\"simple\",\"symbol\":{\"type\":\"simple-marker\",\"style\":\"square\",\"outline\":{\"color\":[0,92,230,1]},\"size\":6,\"color\":[0,92,230,1]}}",
 	"useStationLabel":true,

@@ -2626,7 +2626,7 @@ require([
 
   function lightningSearch() {
     //get line buffer
-    if (txdenabled) {
+    if (txdenabled || integratorenabled) {
       var params = new BufferParameters({
         distances: [1],
         unit: "kilometers",
@@ -2661,13 +2661,12 @@ require([
         })
         .then(function (linebuffers) {
           lineBuffer = linebuffers;
-          maxDiff =
-            parseInt(document.getElementById("timewindow").value) / 1000;
+          maxDiff = parseInt(document.getElementById("timewindow").value) / 1000;
 
           //Split on VAPI variable here
           if (integratorenabled) {
-            req = makeVAPIpolyrequest(linebuffer);
-            rsp = sendVAPIpolyrequest(req, "evttime");
+            req = makeVAPIpolyRequestBody(lineBuffer);
+            rsp = authorizeVAPI("polygon",req);
           } else {
             req = makeTXDpolyrequest(lineBuffer);
             rsp = sendTXDrequest(req, "evttime");
@@ -2681,7 +2680,7 @@ require([
 
   function lightningSearchAdv() {
     if (integratorenabled) {
-      vapipointsearch();
+      authorizeVAPI("point","");
 
     } else if (txdenabled) {
       maxDiff = 0;
@@ -2692,8 +2691,8 @@ require([
     }
   }
 
-  //vaisala integrator api
-  function vapipointsearch(){
+  //authorize VAPI 
+  function authorizeVAPI(apiType, reqBody){
     //get auth token
     var xhttp = new XMLHttpRequest();
     xhttp.timeout=15000;
@@ -2703,7 +2702,7 @@ require([
     xhttp.onreadystatechange=function() {
       if(this.readyState==4 && this.status==200) {
         //if successfully authorized, perform search
-        sendVAPIpointrequest(this.response);
+        sendVAPIRequest(this.response,apiType,reqBody);
       }
       //todo: build out responses for other statuses (400 - Bad request, 401 - Authen, 404 - NF, 500 - Server).
 
@@ -2716,7 +2715,7 @@ require([
   }
 
   //VAPI Point Functions
-  function makeVAPIpointrequest() {
+  function makeVAPIpointQueryString() {
     //get parameters
     var evttime = document.getElementById("ltgevttime");
     var evttimestop = document.getElementById("ltgevttimestop");
@@ -2751,73 +2750,54 @@ require([
 
   }
 
-  function sendVAPIpointrequest(authresponse){
-    var xhttp = new XMLHttpRequest();
-    xhttp.timeout=15000;
-    xhttp.ontimeout = (e) => {
-      alert("Vaisala Integrator API Error: No response from server.");
-    }
-    xhttp.onreadystatechange = function() {
-      if (this.readyState == 4 && this.status == 200) {
-        processVAPIResponse(this.response);
-      }
-      //todo: build out responses for other statuses (400 - Bad request,401 - Authen, 403 - Author, 404 - Not found )
-    };
-
-    var authtoken = authresponse.access_token;
-    var qs=makeVAPIpointrequest();
-    var apiurl = `${integratorbboxurl}${qs}`;
-    xhttp.open("GET",apiurl,true);
-    xhttp.setRequestHeader("Authorization", "Bearer " + authtoken);
-    xhttp.responseType='json';
-    xhttp.send();
-
-  }
-
   //VAPI Poly Functions
-  function makeVAPIpolyrequest() {
+  function makeVAPIpolyRequestBody(lineBuffers) {
     var reqJSON = {
       "geometry" : {
         "type" : "Polygon",
         "coordinates": []
       }
     };
-    for (i = 0; i < lineBuffers[0].length; i++) {
-      reqJSON.geometry.coordinates.push(lineBuffer.rings[0][i][1].toFixed(4), lineBuffer.rings[0][i][0].toFixed(4));
+    for (i = 0; i < lineBuffers.rings[0].length; i++) {
+      var coords=[];
+      coords.push(lineBuffer.rings[0][i][0].toFixed(4));
+      coords.push(lineBuffer.rings[0][i][1].toFixed(4));
+      reqJSON.geometry.coordinates.push(coords);
     }
 
     return reqJSON;
   }
   
-  function makeVAPIquerystring(){
-    var evttime = document.getElementById("ltgevttime");
-    var evttimestop = document.getElementById("ltgevttimestop");
+  function makeVAPIpolyQueryString(){
+    var evttime = document.getElementById("evttime");
+    var timewindow =  parseInt(document.getElementById("timewindow").value)/2;
+
 
     var evttimeval = moment.tz(
       evttime.value,
       "MM/DD/YYYY HH:mm:ss.SSS",
       timezone
     );
-    var gmtString = evttimeval
+    var evttimevalstart = evttimeval.add(-timewindow,'ms');
+
+    var gmtString = evttimevalstart
       .clone()
       .tz("GMT")
-      .format();
+      .format("YYYY-MM-DDTHH:mm:ss.SSS");
 
-    var evttimevalstop = moment.tz(
-      evttimestop.value,
-      "MM/DD/YYYY HH:mm:ss.SSS",
-      timezone
-    );
+    var evttimevalstop = evttimeval.add(timewindow*2,'ms');
+
     var gmtStringstop = evttimevalstop
       .clone()
       .tz("GMT")
-      .format();
+      .format("YYYY-MM-DDTHH:mm:ss.SSS");
     
-    var qs = `start=${gmtString}&end=${gmtStringstop}`
+    var qs = `start=${gmtString}Z&end=${gmtStringstop}Z`;
     return qs;
   }
 
-  function sendVAPIpolyrequest(authresponse) {
+  //VAPI Helper Functions
+  function sendVAPIRequest(authresponse, apiType, reqbody) {
     var xhttp = new XMLHttpRequest();
     xhttp.timeout=15000;
     xhttp.ontimeout = (e) => {
@@ -2825,26 +2805,37 @@ require([
     }
     xhttp.onreadystatechange = function() {
       if (this.readyState == 4 && this.status == 200) {
-        processVAPIResponse(this.response);
+        if(apiType=="polygon"){
+          processVAPIResponse(this.response, "evttime");
+
+        } else {
+          processVAPIResponse(this.response, "ltgevttime");
+        }
       }
       //todo: build out responses for other statuses (400 - Bad request,401 - Authen, 403 - Author, 404 - Not found )
     };
 
     var authtoken = authresponse.access_token;
-    var body=makeVAPIpolyrequest();
-    var qs=makeVAPIquerystring();
-    var apiurl = `${integratorpolyurl}${qs}`;
-    xhttp.open("POST",apiurl,true);
-    xhttp.setRequestHeader("Accept", "application/geo+json");
-    xhttp.setRequestHeader("Content-Type", "application/json");
-    xhttp.setRequestHeader("Authorization", "Bearer " + authtoken);
-    xhttp.body = body;
     xhttp.responseType='json';
+
+    if(apiType=="polygon") {
+      var qs=makeVAPIpolyQueryString();
+      var apiurl = `${integratorpolyurl}${qs}`;
+      xhttp.open("POST",apiurl,true);
+      xhttp.body = reqbody;
+      xhttp.setRequestHeader("Accept", "application/geo+json");
+      xhttp.setRequestHeader("Content-Type", "application/json");
+    } else {
+      var qs=makeVAPIpointQueryString();
+      var apiurl = `${integratorbboxurl}${qs}`;
+      xhttp.open("GET",apiurl,true);
+    }
+    xhttp.setRequestHeader("Authorization", "Bearer " + authtoken);
     xhttp.send();
   }
 
   //processVAPI response
-  function processVAPIResponse(rsp){
+  function processVAPIResponse(rsp, starttimefield){
     ltgPoints =[];
     ltgdata = rsp;  //response should already be json object.
     //loop through events
