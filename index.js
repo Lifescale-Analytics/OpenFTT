@@ -321,7 +321,6 @@ require([
   var bookmarkParams = [];
   var bookmarkFuncsWithBookmark = [];
   var loader = $("#loader");
-  var csvData;
 
   //change color for multi-endied fault location
   //var faultLocID = 0;
@@ -382,11 +381,21 @@ require([
     },
   };
 
+  var aovSymbol = {
+    type: "simple-marker",  
+    style: "square",
+    color: "blue",
+    outline: { width: 2.25, color: [0, 0, 0, 1] },
+    color: [0, 0, 0, 0],
+    size: 8,
+  };
+
   //File Upload
   document.getElementById("uploadForm").addEventListener("change", (event) => {
     var reader = new FileReader();
     reader.onload = (event) => {
-      csvData = $.csv.toObjects(event.target.result);
+      var csvData = $.csv.toObjects(event.target.result);
+      plotAoVOnMap(csvData);
     }
     reader.onerror = (err) => {
       alert(JSON.stringify(err));
@@ -444,6 +453,7 @@ require([
   var faultsLayer = new GraphicsLayer();
   var startStationLayer = new GraphicsLayer();
   var fiStatusLayer = new GraphicsLayer();
+  var aovLayer = new GraphicsLayer();
   //var bufferLayer = new GraphicsLayer();
 
   const switchLabel = JSON.parse(data.switchLabel);
@@ -564,6 +574,7 @@ require([
       faultsLayer,
       startStationLayer,
       fiStatusLayer,
+      aovLayer,
     ],
   });
 
@@ -1945,6 +1956,7 @@ require([
     faultsLayer.removeAll();
     startStationLayer.removeAll();
     fiStatusLayer.removeAll();
+    aovLayer.removeAll();
 
     faultLocID = 0;
     lastIndex = 0;
@@ -2522,6 +2534,27 @@ require([
       fltPts.push(newpt);
     }
     return fltPts;
+  }
+
+  function plotAoVOnMap(csvData) {
+    for(pt in csvData) {
+      var aovpoint1 = new Point(csvData[pt]["Bus1X"], csvData[pt]["Bus1Y"]);
+      var aovpoint2 = new Point(csvData[pt]["Bus2X"], csvData[pt]["Bus2Y"]);
+      var aov1 = new Graphic({
+        geometry: aovpoint1,
+        symbol: aovSymbol,
+        attributes: null,
+        popupTemplate: null,
+      });
+      var aov2 = new Graphic({
+        geometry: aovpoint2,
+        symbol: aovSymbol,
+        attributes: null,
+        popupTemplate: null,
+      });
+      aovLayer.add(aov1);
+      aovLayer.add(aov2);
+    }
   }
 
   function findNearestStructures(faultPoints) {
