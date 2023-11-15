@@ -384,13 +384,14 @@ require([
     },
   };
 
+  //todo: turn this into a function with an argument of a number and use it for picking color scheme (similar to fiStatuSymbol function on row 419)
   var aovSymbol = {
     type: "simple",
     symbol: {
       type: "simple-marker",
       style: "circle",
-      outline: { width: 2.25, color: [0, 0, 0, 1] },
-      color: [0, 0, 0, 0],
+      outline: { width: 2.25, color: [255, 0, 0, 1] },
+      color: [255, 0, 0, 1],
       size: 8,
     },
   };
@@ -2550,8 +2551,8 @@ require([
 
   function plotAoVOnMap(csvData) {
     for(pt in csvData) {
-      var aovpoint1 = new Point(csvData[pt]["Bus1X"], csvData[pt]["Bus1Y"]);
-      var aovpoint2 = new Point(csvData[pt]["Bus2X"], csvData[pt]["Bus2Y"]);
+      var aovpoint1 = getPoint(csvData[pt]["Bus1X"], csvData[pt]["Bus1Y"]);
+      var aovpoint2 = getPoint(csvData[pt]["Bus2X"], csvData[pt]["Bus2Y"]);
       var aov1 = new Graphic({
         geometry: aovpoint1,
         symbol: aovSymbol,
@@ -2564,6 +2565,10 @@ require([
         attributes: null,
         popupTemplate: null,
       });
+      //todo: add line between point1/2, use min val between the two points for line symbology
+      //todo: add attributes (busname, line name, value)
+      //todo: add popupTemplate (using the attributes above)
+      //todo: add renderer based on Val Column - max 10 vals (percentage)
       aovLayer.add(aov1);
       aovLayer.add(aov2);
     }
