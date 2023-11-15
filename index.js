@@ -67,21 +67,24 @@ function getInfoDivMinHeight(){
       switch(i){
         case 0:
         case 1:
-          //faults, lightning
+        case 2:
+          //faults, lightning, AOV
           minHeight=156;
           break;
-        case 2:
-        case 5:
-          //bookmarks, tools, help
+
+        case 3:
+        case 6:
+          //bookmarks,  help
           minHeight=71;
           break;
-        case 4:
+        case 5:
+          //tools
           minHeight=71;
           if($("#printpanel")[0].style.display=='block') { 
             minHeight +=500;
           }
           break;
-        case 3:
+        case 4:
           //legend
           minHeight=223;
           break;
@@ -382,15 +385,24 @@ require([
   };
 
   var aovSymbol = {
-    type: "simple-marker",  
-    style: "square",
-    color: "blue",
-    outline: { width: 2.25, color: [0, 0, 0, 1] },
-    color: [0, 0, 0, 0],
-    size: 8,
+    type: "simple",
+    symbol: {
+      type: "simple-marker",
+      style: "circle",
+      outline: { width: 2.25, color: [0, 0, 0, 1] },
+      color: [0, 0, 0, 0],
+      size: 8,
+    },
   };
 
-  //File Upload
+  //AOV File Upload
+  document.getElementById("clear-aov").addEventListener("click", (event) => {
+    //clear form data
+    document.getElementById("uploadForm").reset();
+    //clear map graphics
+    resetEnvironment(false);
+  });
+
   document.getElementById("uploadForm").addEventListener("change", (event) => {
     var reader = new FileReader();
     reader.onload = (event) => {
