@@ -27,6 +27,59 @@
 	"maxRecordCount": "2000",
 	"faultLocID": "0",
 	"initialExtent": "{ \"xmin\": -87.1, \"ymin\": 30.8, \"xmax\": -78.6, \"ymax\": 35, \"padding\": { \"right\": 400}, \"spatialReference\": 4326 }",
+	"aovPopuptitle": "Area of Vulnerability: {id}",
+	"aov1PopupFields": [{
+			"fieldName": "Bus1Name",
+			"label": "Bus Name"
+		},
+		{
+			"fieldName": "Bus1X",
+			"label": "Latitude"
+		},
+		{
+			"fieldName": "Bus1Y",
+			"label": "Longitude"
+		},
+		{
+			"fieldName": "Bus1Val",
+			"label": "Value"
+		},
+		{
+			"fieldName": "LineName",
+			"label": "Line"
+		}
+	],
+	"aov2PopupFields": [{
+			"fieldName": "Bus2Name",
+			"label": "Bus Name"
+		},
+		{
+			"fieldName": "Bus2X",
+			"label": "Latitude"
+		},
+		{
+			"fieldName": "Bus2Y",
+			"label": "Longitude"
+		},
+		{
+			"fieldName": "Bus2Val",
+			"label": "Value"
+		},
+		{
+			"fieldName": "LineName",
+			"label": "Line"
+		}
+	],
+	"aovLinePopuptitle": "Line Information: {id}",
+	"aovLinePopupFields": [{
+			"fieldName": "Line",
+			"label": "Line"
+		},
+		{
+			"fieldName": "Value",
+			"label": "Value"
+		}
+	],
 	"ltgPopuptitle": "Lightning: {id}",
 	"ltgPopupFields": [{
 			"fieldName": "time",

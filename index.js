@@ -224,6 +224,8 @@ require([
   var fiHealthCheckPt = data.fiHealthCheckPt;
   var initialExtent = JSON.parse(data.initialExtent);
   var maxRecordCount = data.maxRecordCount;
+  var aovPopuptitle = data.aovPopuptitle;
+  var aovLinePopuptitle = data.aovLinePopuptitle;
   var ltgPopuptitle = data.ltgPopuptitle;
   var fiInfotitle = data.fiInfotitle;
   var txduid = data.txduid;
@@ -297,6 +299,9 @@ require([
   var fiStatusFields = fiFields.map((f) => f.fieldName);
   var fiHealthStatus = false;
 
+  var aov1PopupFields = data.aov1PopupFields;
+  var aov2PopupFields = data.aov2PopupFields;
+  var aovLinePopupFields = data.aovLinePopupFields;
   var ltgPopupFields = data.ltgPopupFields;
 
   var timezoneLabels = document.getElementsByClassName("current-timezone");
@@ -384,18 +389,6 @@ require([
     },
   };
 
-  //todo: turn this into a function with an argument of a number and use it for picking color scheme (similar to fiStatuSymbol function on row 419)
-  var aovSymbol = {
-    type: "simple",
-    symbol: {
-      type: "simple-marker",
-      style: "circle",
-      outline: { width: 2.25, color: [255, 0, 0, 1] },
-      color: [255, 0, 0, 1],
-      size: 8,
-    },
-  };
-
   //AOV File Upload
   document.getElementById("clear-aov").addEventListener("click", (event) => {
     //clear form data
@@ -408,6 +401,7 @@ require([
     var reader = new FileReader();
     reader.onload = (event) => {
       var csvData = $.csv.toObjects(event.target.result);
+      aovLayer.removeAll();
       plotAoVOnMap(csvData);
     }
     reader.onerror = (err) => {
@@ -415,6 +409,70 @@ require([
     }
     event.target.files.length > 0 && reader.readAsText(event.target.files[0]);
   });
+
+  //Determine color for Area of Vulnerability
+  function aovColorVal(value) {
+    // n color values corresponds to n-1 breakpoints
+    let colorArray = [
+      [165,0,38,1],
+      [215,48,39,1],
+      [244,109,67,1],
+      [253,174,97,1],
+      [254,224,139,1],
+      [217,239,139,1],
+      [166,217,106,1],
+      [102,189,99,1],
+      [26,152,80,1],
+      [0,104,55,1]
+    ];
+
+    let breakPoints = [
+      0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9
+    ]; 
+    
+    let numValue = parseFloat(value);
+
+    //0 case
+    if (0 <= numValue < breakPoints[0]) {
+      return colorArray[0];
+    };
+
+    //1 to (n-1)
+    for(i = 0; i < breakPoints.length; i++) {
+        if (breakPoints[i] <= numValue < breakPoints[i + 1]) {
+          return colorArray[i + 1];    
+        };
+    };
+
+    //n case
+    return colorArray[colorArray.length - 1];
+  }
+
+  function aovLineSymbol(value) {
+    var colorVal = aovColorVal(value);
+
+    var symbol = {
+      type: "simple-line",
+      color: colorVal,
+      width: 2
+    };
+
+    return symbol;
+  }
+  
+  function aovStatusSymbol(value) {
+    var colorVal = aovColorVal(value);
+    
+    var symbol = {
+      type: "simple-marker",
+      style: "circle",
+      outline: { width: 1.5, color: [0, 0, 0, 1] },
+      color: colorVal,
+      size: 8,
+    };
+    
+    return symbol;
+  }
 
   function fiStatusSymbol(status) {
     var curStatus = status.toUpperCase();
@@ -514,6 +572,26 @@ require([
     title: "Structure: {" + `${structureTitleField}` + "}",
     outFields: ["*"],
     content: distanceToStation,
+  };
+
+  var aovPopupTemplate = {
+    title: aovPopuptitle,
+    content: [
+      {
+        type: "fields",
+        fieldInfos: null,
+      },
+    ],
+  };
+
+  var aovLinePopupTemplate = {
+    title: aovLinePopuptitle,
+    content: [
+      {
+        type: "fields",
+        fieldInfos: aovLinePopupFields
+      }
+    ]
   };
 
   var ltgPopupTemplate = {
@@ -2550,27 +2628,64 @@ require([
   }
 
   function plotAoVOnMap(csvData) {
-    for(pt in csvData) {
-      var aovpoint1 = getPoint(csvData[pt]["Bus1X"], csvData[pt]["Bus1Y"]);
-      var aovpoint2 = getPoint(csvData[pt]["Bus2X"], csvData[pt]["Bus2Y"]);
-      var aov1 = new Graphic({
-        geometry: aovpoint1,
-        symbol: aovSymbol,
-        attributes: null,
-        popupTemplate: null,
-      });
-      var aov2 = new Graphic({
-        geometry: aovpoint2,
-        symbol: aovSymbol,
-        attributes: null,
-        popupTemplate: null,
-      });
-      //todo: add line between point1/2, use min val between the two points for line symbology
-      //todo: add attributes (busname, line name, value)
-      //todo: add popupTemplate (using the attributes above)
-      //todo: add renderer based on Val Column - max 10 vals (percentage)
-      aovLayer.add(aov1);
-      aovLayer.add(aov2);
+    try {
+      for(pt in csvData) {
+        var aovAttributes = csvData[pt];
+  
+        if (isNaN(aovAttributes["Bus1X"]) || isNaN(aovAttributes["Bus1Y"]) || isNaN(aovAttributes["Bus2X"]) || isNaN(aovAttributes["Bus2Y"]) || isNaN(aovAttributes["Bus1Val"]) || isNaN(aovAttributes["Bus2Val"]))
+          continue;
+        
+        var aovpoint1 = getPoint(aovAttributes["Bus1X"], aovAttributes["Bus1Y"]);
+        var aovpoint2 = getPoint(aovAttributes["Bus2X"], aovAttributes["Bus2Y"]);
+  
+        aovPopupTemplate.content[0].fieldInfos = aov1PopupFields;
+        var aovSymbol1 = aovStatusSymbol(aovAttributes["Bus1Val"]);
+        
+        var aov1 = new Graphic({
+          geometry: aovpoint1,
+          symbol: aovSymbol1,
+          attributes: aovAttributes,
+          popupTemplate: aovPopupTemplate,
+        });
+        
+        aovPopupTemplate.content[0].fieldInfos = aov2PopupFields;
+        var aovSymbol2 = aovStatusSymbol(aovAttributes["Bus2Val"]);
+        
+        var aov2 = new Graphic({
+          geometry: aovpoint2,
+          symbol: aovSymbol2,
+          attributes: aovAttributes,
+          popupTemplate: aovPopupTemplate,
+        });
+        
+        const polyLine = {
+          type: "polyline",
+          paths: [
+            [aovpoint1.longitude, aovpoint1.latitude],
+            [aovpoint2.longitude, aovpoint2.latitude],
+          ]
+        };
+  
+        var aovLineAttributes = {
+          "Line": aovAttributes.LineName, 
+          "Value": Math.min(aovAttributes["Bus1Val"], aovAttributes["Bus2Val"])
+        };
+        
+        var aovLineStatus = aovLineSymbol(aovLineAttributes.Value);
+        
+        var aovLine = new Graphic({
+          geometry: polyLine,
+          symbol: aovLineStatus,
+          attributes: aovLineAttributes,
+          popupTemplate: aovLinePopupTemplate,
+        })
+        
+        aovLayer.add(aov1);
+        aovLayer.add(aov2);
+        aovLayer.add(aovLine);
+      }
+    } catch (error) {
+      alert(error);
     }
   }
 
