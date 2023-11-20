@@ -115,6 +115,23 @@ function getInfoDivMinHeight(){
 
 }
 
+function setupAOVLegend(colors, breakpoints) {
+  var aovLegendTable = document.getElementById("aovLegend");
+  var tableBody = document.createElement("tbody");
+  for (let row = 0; row < colors.length; row++) {
+    const currentRow = document.createElement("tr");
+    //for (let col = 0; col < 2; col++) {
+      const currentCell = document.createElement("td");
+      currentCell.style.background = `rgb(${colors[row][0]}, ${colors[row][1]}, ${colors[row][2]})`;
+      const cellText = document.createTextNode(`${row === 0 ? 0 : breakpoints[row - 1]} - ${row === 0 ? breakpoints[row] : (row === colors.length - 1 ) ? '1' :breakpoints[row]}`);
+      currentCell.appendChild(cellText);
+      currentRow.appendChild(currentCell);
+    //}
+    tableBody.appendChild(currentRow);
+  }
+  aovLegendTable.appendChild(tableBody);
+}
+
 function downloadLightning(){
   var csv=[];
   var ltgtbl = document.getElementById("resultstblltg").querySelectorAll('tr');
@@ -338,6 +355,26 @@ require([
     [14, 115, 73, 1],
   ];
 
+  //Setup AOV Legend table
+  var aovColors =  [
+      [165,0,38,1],
+      [215,48,39,1],
+      [244,109,67,1],
+      [253,174,97,1],
+      [254,224,139,1],
+      [217,239,139,1],
+      [166,217,106,1],
+      [102,189,99,1],
+      [26,152,80,1],
+      [0,104,55,1]
+    ];
+
+  var aovBreakpoints =  [
+      0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9
+  ];
+
+  setupAOVLegend(aovColors, aovBreakpoints);
+  
   //set up proxyUrl
   if(useProxy){
     urlUtils.addProxyRule({
@@ -2628,15 +2665,56 @@ require([
   }
 
   function plotAoVOnMap(csvData) {
+    let zoomPoint;
     try {
+
+      //Sort our data by bus1name
+      csvData.sort(function(first, second){
+        if (first.Bus1Name < second.Bus1Name)
+          return -1;
+        if (first.Bus1Name > second.Bus1Name)
+          return 1;
+        return 0;
+      });
+
+      //Replace empty voltages with 1
+      csvData.forEach(x => {
+        if (x.Bus1Val == '')
+          x.Bus1Val = 1;
+        if (x.Bus2Val == '')
+          x.Bus2Val = 1;
+      });
+      
+      //Set all matching bus names to min value for that bus
+      let uniqueNames1 = [...new Set(csvData.map(x => x.Bus1Name))];
+      let uniqueNames2 = [...new Set(csvData.map(x => x.Bus2Name))];
+      let allUniqueNames = new Set(uniqueNames1.join(uniqueNames2).split(',').sort());
+      
+      uniqueNames1.forEach(nameToSet => {
+        let minVal1 = Math.min(...csvData.filter(x => x.Bus1Name === nameToSet).map(x => x.Bus1Val));
+        let minVal2 = Math.min(...csvData.filter(x => x.Bus2Name === nameToSet).map(x => x.Bus2Val));
+        let realMinVal = Math.min(minVal1, minVal2);
+        csvData.forEach(x => {
+          if (x.Bus1Name === nameToSet) {
+            x.Bus1Val = realMinVal;
+          }
+          if (x.Bus2Name === nameToSet) {
+            x.Bus2Val = realMinVal;
+          }
+        });
+      });
+
+      let pointsPlotted = [];
+      
       for(pt in csvData) {
         var aovAttributes = csvData[pt];
   
-        if (isNaN(aovAttributes["Bus1X"]) || isNaN(aovAttributes["Bus1Y"]) || isNaN(aovAttributes["Bus2X"]) || isNaN(aovAttributes["Bus2Y"]) || isNaN(aovAttributes["Bus1Val"]) || isNaN(aovAttributes["Bus2Val"]))
+        if (isNaN(aovAttributes["Bus1X"]) || isNaN(aovAttributes["Bus1Y"]) || isNaN(aovAttributes["Bus2X"]) || isNaN(aovAttributes["Bus2Y"]))
           continue;
         
         var aovpoint1 = getPoint(aovAttributes["Bus1X"], aovAttributes["Bus1Y"]);
         var aovpoint2 = getPoint(aovAttributes["Bus2X"], aovAttributes["Bus2Y"]);
+        zoomPoint = aovpoint1;
   
         aovPopupTemplate.content[0].fieldInfos = aov1PopupFields;
         var aovSymbol1 = aovStatusSymbol(aovAttributes["Bus1Val"]);
@@ -2679,13 +2757,24 @@ require([
           attributes: aovLineAttributes,
           popupTemplate: aovLinePopupTemplate,
         })
+
+        var isInArray = pointsPlotted.find(function(point){ return point.attributes.Bus1Name === aov1.attributes.Bus1Name }) !== undefined;
+        if (!isInArray) {
+          aovLayer.add(aov1);
+          pointsPlotted.push(aov1);
+        }
         
-        aovLayer.add(aov1);
-        aovLayer.add(aov2);
+        isInArray = pointsPlotted.find(function(point){ return point.attributes.Bus2Name === aov2.attributes.Bus2Name }) !== undefined;
+        if (!isInArray) {
+          aovLayer.add(aov2);
+          pointsPlotted.push(aov2);
+        }
         aovLayer.add(aovLine);
       }
     } catch (error) {
       alert(error);
+    } finally {
+      zoomTo(zoomPoint);
     }
   }
 
