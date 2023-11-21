@@ -67,9 +67,12 @@ function getInfoDivMinHeight(){
       switch(i){
         case 0:
         case 1:
-        case 2:
-          //faults, lightning, AOV
+          //faults, lightning
           minHeight=156;
+          break;
+        case 2:
+          //AOV
+          minHeight=278;
           break;
 
         case 3:
@@ -117,16 +120,19 @@ function getInfoDivMinHeight(){
 
 function setupAOVLegend(colors, breakpoints) {
   var aovLegendTable = document.getElementById("aovLegend");
-  var tableBody = document.createElement("tbody");
+  const tableBody = document.createElement("tbody");
   for (let row = 0; row < colors.length; row++) {
     const currentRow = document.createElement("tr");
-    //for (let col = 0; col < 2; col++) {
-      const currentCell = document.createElement("td");
-      currentCell.style.background = `rgb(${colors[row][0]}, ${colors[row][1]}, ${colors[row][2]})`;
-      const cellText = document.createTextNode(`${row === 0 ? 0 : breakpoints[row - 1]} - ${row === 0 ? breakpoints[row] : (row === colors.length - 1 ) ? '1' :breakpoints[row]}`);
-      currentCell.appendChild(cellText);
-      currentRow.appendChild(currentCell);
-    //}
+    const colorCell = document.createElement("td");
+    const colorCircle = document.createElement("span");
+    colorCircle.style.background = `rgb(${colors[row][0]}, ${colors[row][1]}, ${colors[row][2]})`;
+    colorCircle.className = 'circle';
+    colorCell.appendChild(colorCircle);
+    colorCell.style.width = '100px';
+    currentRow.appendChild(colorCell);
+    const textCell = document.createElement("td");
+    textCell.textContent = (`${row === 0 ? 0 : breakpoints[row - 1]} - ${row === 0 ? breakpoints[row] : (row === colors.length - 1 ) ? '1' : breakpoints[row]}`);
+    currentRow.appendChild(textCell);
     tableBody.appendChild(currentRow);
   }
   aovLegendTable.appendChild(tableBody);
@@ -356,6 +362,7 @@ require([
   ];
 
   //Setup AOV Legend table
+  // n color values corresponds to n-1 breakpoints
   var aovColors =  [
       [165,0,38,1],
       [215,48,39,1],
@@ -449,40 +456,23 @@ require([
 
   //Determine color for Area of Vulnerability
   function aovColorVal(value) {
-    // n color values corresponds to n-1 breakpoints
-    let colorArray = [
-      [165,0,38,1],
-      [215,48,39,1],
-      [244,109,67,1],
-      [253,174,97,1],
-      [254,224,139,1],
-      [217,239,139,1],
-      [166,217,106,1],
-      [102,189,99,1],
-      [26,152,80,1],
-      [0,104,55,1]
-    ];
-
-    let breakPoints = [
-      0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9
-    ]; 
-    
+      
     let numValue = parseFloat(value);
 
     //0 case
-    if (0 <= numValue < breakPoints[0]) {
-      return colorArray[0];
+    if (0 <= numValue < aovBreakpoints[0]) {
+      return aovColors[0];
     };
 
     //1 to (n-1)
-    for(i = 0; i < breakPoints.length; i++) {
-        if (breakPoints[i] <= numValue < breakPoints[i + 1]) {
-          return colorArray[i + 1];    
+    for(i = 0; i < aovBreakpoints.length; i++) {
+        if (aovBreakpoints[i] <= numValue < aovBreakpoints[i + 1]) {
+          return aovColors[i + 1];    
         };
     };
 
     //n case
-    return colorArray[colorArray.length - 1];
+    return aovColors[aovColors.length - 1];
   }
 
   function aovLineSymbol(value) {
