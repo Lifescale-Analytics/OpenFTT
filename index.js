@@ -433,6 +433,13 @@ require([
     },
   };
 
+  var aovReferenceBusSymbol = {
+    type: "simple-marker",
+    style: "x",
+    outline: { width: 1.25, color: [255, 0, 0, 1] },
+    size: 8,
+  }
+
   //AOV File Upload
   document.getElementById("clear-aov").addEventListener("click", (event) => {
     //clear form data
@@ -2659,13 +2666,13 @@ require([
     try {
 
       //Sort our data by bus1name
-      csvData.sort(function(first, second){
-        if (first.Bus1Name < second.Bus1Name)
-          return -1;
-        if (first.Bus1Name > second.Bus1Name)
-          return 1;
-        return 0;
-      });
+      //csvData.sort(function(first, second){
+      //  if (first.Bus1Name < second.Bus1Name)
+      //    return -1;
+      //  if (first.Bus1Name > second.Bus1Name)
+      //    return 1;
+      //  return 0;
+      //});
 
       //Replace empty voltages with 1
       csvData.forEach(x => {
@@ -2678,9 +2685,9 @@ require([
       //Set all matching bus names to min value for that bus
       let uniqueNames1 = [...new Set(csvData.map(x => x.Bus1Name))];
       let uniqueNames2 = [...new Set(csvData.map(x => x.Bus2Name))];
-      let allUniqueNames = new Set(uniqueNames1.join(uniqueNames2).split(',').sort());
+      let allUniqueNames = new Set([...uniqueNames1, ...uniqueNames2]);
       
-      uniqueNames1.forEach(nameToSet => {
+      allUniqueNames.forEach(nameToSet => {
         let minVal1 = Math.min(...csvData.filter(x => x.Bus1Name === nameToSet).map(x => x.Bus1Val));
         let minVal2 = Math.min(...csvData.filter(x => x.Bus2Name === nameToSet).map(x => x.Bus2Val));
         let realMinVal = Math.min(minVal1, minVal2);
@@ -2695,10 +2702,28 @@ require([
       });
 
       let pointsPlotted = [];
+
+      //Used to determine if we've already plotted a bus node
+      let uniqueNameArray = Array.from(allUniqueNames);
       
       for(pt in csvData) {
         var aovAttributes = csvData[pt];
-  
+
+        //Plot the reference bus
+        if (aovAttributes["Bus1Name"].toLowerCase().includes("reference")) {
+          var referencePoint = getPoint(aovAttributes["Bus1X"], aovAttributes["Bus1Y"]);
+          aovPopupTemplate.content[0].fieldInfos = aov1PopupFields;
+          var referenceBus = new Graphic({
+            geometry: referencePoint,
+            symbol: aovReferenceBusSymbol,
+            attributes: aovAttributes,
+            popupTemplate: aovPopupTemplate,
+          });
+          aovLayer.add(referenceBus);
+          pointsPlotted.push(referenceBus);
+        }
+
+        //Skip over rows missing coordinates
         if (isNaN(aovAttributes["Bus1X"]) || isNaN(aovAttributes["Bus1Y"]) || isNaN(aovAttributes["Bus2X"]) || isNaN(aovAttributes["Bus2Y"]))
           continue;
         
@@ -2708,7 +2733,15 @@ require([
   
         aovPopupTemplate.content[0].fieldInfos = aov1PopupFields;
         var aovSymbol1 = aovStatusSymbol(aovAttributes["Bus1Val"]);
+
+        //Cache line name for plotting the line
+        var lineNameCache = aovAttributes["LineName"];
         
+        //Get all lines for aovSymbol1
+        var lines1 = csvData.filter(lineItem => lineItem.Bus1Name === aovAttributes.Bus1Name).map(lineItem => lineItem.LineName);
+        var lines2 = csvData.filter(lineItem => lineItem.Bus2Name === aovAttributes.Bus1Name).map(lineItem => lineItem.LineName);
+        var lines = [...lines1, ...lines2];
+        aovAttributes.LineName = lines.join('<br/>');
         var aov1 = new Graphic({
           geometry: aovpoint1,
           symbol: aovSymbol1,
@@ -2718,7 +2751,14 @@ require([
         
         aovPopupTemplate.content[0].fieldInfos = aov2PopupFields;
         var aovSymbol2 = aovStatusSymbol(aovAttributes["Bus2Val"]);
-        
+        //lines1 = [];
+        //lines2 = [];
+        //lines = [];
+        //Get all lines for aovSymbol2
+        //lines1 = csvData.filter(lineItem => lineItem.Bus1Name === aovAttributes.Bus2Name).map(lineItem => lineItem.LineName);
+        //lines2 = csvData.filter(lineItem => lineItem.Bus2Name === aovAttributes.Bus2Name).map(lineItem => lineItem.LineName);
+        //lines = [...lines1, ...lines2];
+        //aovAttributes.LineName = lines.join(',');
         var aov2 = new Graphic({
           geometry: aovpoint2,
           symbol: aovSymbol2,
@@ -2735,7 +2775,7 @@ require([
         };
   
         var aovLineAttributes = {
-          "Line": aovAttributes.LineName, 
+          "Line": lineNameCache, 
           "Value": Math.min(aovAttributes["Bus1Val"], aovAttributes["Bus2Val"])
         };
         
@@ -2746,25 +2786,27 @@ require([
           symbol: aovLineStatus,
           attributes: aovLineAttributes,
           popupTemplate: aovLinePopupTemplate,
-        })
+        });
 
-        var isInArray = pointsPlotted.find(function(point){ return point.attributes.Bus1Name === aov1.attributes.Bus1Name }) !== undefined;
-        if (!isInArray) {
+        //Look up bus node in unique name aray.  Plot if in array, then remove from array
+        var uniqueNameIndex = uniqueNameArray.indexOf(aov1.attributes.Bus1Name);
+        if (uniqueNameIndex > -1) {
           aovLayer.add(aov1);
-          pointsPlotted.push(aov1);
+          uniqueNameArray.splice(uniqueNameIndex, 1);
         }
-        
-        isInArray = pointsPlotted.find(function(point){ return point.attributes.Bus2Name === aov2.attributes.Bus2Name }) !== undefined;
-        if (!isInArray) {
+        uniqueNameIndex = uniqueNameArray.indexOf(aov2.attributes.Bus2Name);
+        if (uniqueNameIndex > -1) {
           aovLayer.add(aov2);
-          pointsPlotted.push(aov2);
+          uniqueNameArray.splice(uniqueNameIndex, 1);
         }
+       
         aovLayer.add(aovLine);
       }
     } catch (error) {
       alert(error);
     } finally {
       zoomTo(zoomPoint);
+      view.zoom = 14;
     }
   }
 
