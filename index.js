@@ -3041,14 +3041,14 @@ require([
     var reqJSON = {
       "geometry" : {
         "type" : "Polygon",
-        "coordinates": []
+        "coordinates": [[]]
       }
     };
     for (i = 0; i < lineBuffers.rings[0].length; i++) {
       var coords=[];
-      coords.push(lineBuffer.rings[0][i][0].toFixed(4));
-      coords.push(lineBuffer.rings[0][i][1].toFixed(4));
-      reqJSON.geometry.coordinates.push(coords);
+      coords.push(parseFloat(lineBuffer.rings[0][i][0].toFixed(4)));
+      coords.push(parseFloat(lineBuffer.rings[0][i][1].toFixed(4)));
+      reqJSON.geometry.coordinates[0].push(coords);
     }
 
     return reqJSON;
