@@ -3078,7 +3078,7 @@ require([
       .tz("GMT")
       .format("YYYY-MM-DDTHH:mm:ss.SSS");
     
-    var qs = `start=${gmtString}Z&end=${gmtStringstop}Z`;
+    var qs = `start=${gmtString}Z&end=${gmtStringstop}Z&inclEllipse=none&fields=analysis&page=0&size=2000`;
     return qs;
   }
 
