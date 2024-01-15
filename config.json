@@ -1,28 +1,85 @@
 {
-	"servername": "https://msi:6443",
+	"servername": "http://msi:6080",
 	"useProxy": true,
 	"proxyURL": "serverIParcgisproxy/proxy.ashx",
 	"baseURL": "servername/arcgis/rest/services",
 	"gsvcURL": "baseURL/Utilities/Geometry/GeometryServer",
 	"txdurl1": "serverIParcgisproxy/proxy.ashx?https://txd.vaisala.com/txd100/xml",
 	"txdurl": "serverIPOpenFTT/demo.xml",
+	"integratorenabled" : true,
+	"integratorapiauthurl" : "serverIParcgisproxy/proxy.ashx?https://ltg-auth.vaisala.com/api/v1/auth/token?application=ltg-api&username=<<USERNAME>>&password=<<PASSWORD>>",
+	"integratorbboxurl" : "serverIParcgisproxy/proxy.ashx?https://ltg.vaisala.com/realtime/merge/api/v1/ltgs/radius?",
+	"integratorpolyurl" : "serverIParcgisproxy/proxy.ashx?https://ltg.vaisala.com/realtime/merge/api/v1/ltgs/geometry?",
 	"locatorURL": "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer",
 	"fiURL": "serverIP/fiapi/default.aspx?",
-	"mapServerURL": "baseURL/FTT3857/MapServer",
+	"mapServerURL": "baseURL/OpenFTT/MapServer",
 	"mapSpatialReference":"3857",
 	"bufferSpatialReference":"4326",
 	"lightningBufferSpatialReference":"3857",
 	"lightningPlotSpatialReference":"4326",
 	"printServiceURL": "https://utility.arcgisonline.com/arcgis/rest/services/Utilities/PrintingTools/GPServer/Export%20Web%20Map%20Task",
 	"apiKey":"",
-	"stationLayerID": "1",
+	"stationLayerID": "6",
 	"lineLayerID": "4",
-	"structureLayerID": "2",
-	"switchLayerID": "0",
+	"structureLayerID": "5",
+	"switchLayerID": "3",
 	"fiLayerID": "3",
 	"maxRecordCount": "2000",
 	"faultLocID": "0",
 	"initialExtent": "{ \"xmin\": -87.1, \"ymin\": 30.8, \"xmax\": -78.6, \"ymax\": 35, \"padding\": { \"right\": 400}, \"spatialReference\": 4326 }",
+	"aovPopuptitle": "Area of Vulnerability: {id}",
+	"aov1PopupFields": [{
+			"fieldName": "Bus1Name",
+			"label": "Bus Name"
+		},
+		{
+			"fieldName": "Bus1X",
+			"label": "Latitude"
+		},
+		{
+			"fieldName": "Bus1Y",
+			"label": "Longitude"
+		},
+		{
+			"fieldName": "Bus1Val",
+			"label": "Value"
+		},
+		{
+			"fieldName": "LineName",
+			"label": "Line"
+		}
+	],
+	"aov2PopupFields": [{
+			"fieldName": "Bus2Name",
+			"label": "Bus Name"
+		},
+		{
+			"fieldName": "Bus2X",
+			"label": "Latitude"
+		},
+		{
+			"fieldName": "Bus2Y",
+			"label": "Longitude"
+		},
+		{
+			"fieldName": "Bus2Val",
+			"label": "Value"
+		},
+		{
+			"fieldName": "LineName",
+			"label": "Line"
+		}
+	],
+	"aovLinePopuptitle": "Line Information: {id}",
+	"aovLinePopupFields": [{
+			"fieldName": "Line",
+			"label": "Line"
+		},
+		{
+			"fieldName": "Value",
+			"label": "Value"
+		}
+	],
 	"ltgPopuptitle": "Lightning: {id}",
 	"ltgPopupFields": [{
 			"fieldName": "time",
@@ -68,7 +125,8 @@
 			"fieldName": "OP",
 			"label": "Operational: ",
 			"forDisplay": false,
-			"isStatusFeature": true
+			"isStatusFeature": true,
+			"isDefaultStatusFeature": true
 		},
 		{
 			"fieldName": "SCADA_P1",
@@ -108,7 +166,14 @@
 		}
 	],
 	"switchEnabled":false,
-	"switchPrimaryKey":"ITS_TL_ID",
+	"switchKeys": [
+		{
+			"name": "ITS_TL_ID"
+		},
+		{
+			"name": "SECONDARY_ITS_TL_ID"
+		}
+	],
 	"switchRender": "{\"type\":\"simple\",\"symbol\":{\"type\":\"simple-marker\",\"style\":\"diamond\",\"outline\":{\"color\":[0,127,81,1]},\"color\":[0,127,81,0.7]}}",
 	"useSwitchLabel":true,
 	"switchLabel": "{\"symbol\":{\"type\":\"text\",\"color\":\"black\",\"font\":{\"family\":\"Arial\",\"size\":12}},\"labelPlacement\":\"above-center\",\"labelExpression\":\"[NAME]\"}",
@@ -148,7 +213,7 @@
 			"outfield": true
 		}
 	],
-	"useStationProximity": "false",
+	"useStationFilter": false,
 	"stationFilterField": "ITS_LINE_ID",
 	"stationRender": "{\"type\":\"simple\",\"symbol\":{\"type\":\"simple-marker\",\"style\":\"square\",\"outline\":{\"color\":[0,92,230,1]},\"size\":6,\"color\":[0,92,230,1]}}",
 	"useStationLabel":true,
