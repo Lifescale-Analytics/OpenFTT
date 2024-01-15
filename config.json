@@ -1,5 +1,5 @@
 {
-	"servername": "http://msi:6080",
+	"servername": "http://<<arcgis server and port info>>",
 	"useProxy": true,
 	"proxyURL": "serverIParcgisproxy/proxy.ashx",
 	"baseURL": "servername/arcgis/rest/services",
