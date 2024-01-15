@@ -170,6 +170,15 @@ th, td {
   animation-delay: -0.5s;
 }
 
+.circle {
+  display: block;
+  height: 10px;
+  width: 10px;
+  border-radius: 50%;
+  border: 2px solid #000;
+  margin: auto;
+}
+
 @keyframes lds-ripple {
   0% {
     top: 36px;

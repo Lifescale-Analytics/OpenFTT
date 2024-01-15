@@ -71,17 +71,23 @@ function getInfoDivMinHeight(){
           minHeight=156;
           break;
         case 2:
-        case 5:
-          //bookmarks, tools, help
+          //AOV
+          minHeight=278;
+          break;
+
+        case 3:
+        case 6:
+          //bookmarks,  help
           minHeight=71;
           break;
-        case 4:
+        case 5:
+          //tools
           minHeight=71;
           if($("#printpanel")[0].style.display=='block') { 
             minHeight +=500;
           }
           break;
-        case 3:
+        case 4:
           //legend
           minHeight=223;
           break;
@@ -110,6 +116,26 @@ function getInfoDivMinHeight(){
     minWidth: infoDiv.outerWidth(),
   });
 
+}
+
+function setupAOVLegend(colors, breakpoints) {
+  var aovLegendTable = document.getElementById("aovLegend");
+  const tableBody = document.createElement("tbody");
+  for (let row = 0; row < colors.length; row++) {
+    const currentRow = document.createElement("tr");
+    const colorCell = document.createElement("td");
+    const colorCircle = document.createElement("span");
+    colorCircle.style.background = `rgb(${colors[row][0]}, ${colors[row][1]}, ${colors[row][2]})`;
+    colorCircle.className = 'circle';
+    colorCell.appendChild(colorCircle);
+    colorCell.style.width = '100px';
+    currentRow.appendChild(colorCell);
+    const textCell = document.createElement("td");
+    textCell.textContent = (`${row === 0 ? 0 : breakpoints[row - 1]} - ${row === 0 ? breakpoints[row] : (row === colors.length - 1 ) ? '1' : breakpoints[row]}`);
+    currentRow.appendChild(textCell);
+    tableBody.appendChild(currentRow);
+  }
+  aovLegendTable.appendChild(tableBody);
 }
 
 function downloadLightning(){
@@ -221,6 +247,8 @@ require([
   var fiHealthCheckPt = data.fiHealthCheckPt;
   var initialExtent = JSON.parse(data.initialExtent);
   var maxRecordCount = data.maxRecordCount;
+  var aovPopuptitle = data.aovPopuptitle;
+  var aovLinePopuptitle = data.aovLinePopuptitle;
   var ltgPopuptitle = data.ltgPopuptitle;
   var fiInfotitle = data.fiInfotitle;
   var txduid = data.txduid;
@@ -294,6 +322,9 @@ require([
   var fiStatusFields = fiFields.map((f) => f.fieldName);
   var fiHealthStatus = false;
 
+  var aov1PopupFields = data.aov1PopupFields;
+  var aov2PopupFields = data.aov2PopupFields;
+  var aovLinePopupFields = data.aovLinePopupFields;
   var ltgPopupFields = data.ltgPopupFields;
 
   var timezoneLabels = document.getElementsByClassName("current-timezone");
@@ -321,7 +352,6 @@ require([
   var bookmarkParams = [];
   var bookmarkFuncsWithBookmark = [];
   var loader = $("#loader");
-  var csvData;
 
   //change color for multi-endied fault location
   //var faultLocID = 0;
@@ -331,6 +361,27 @@ require([
     [14, 115, 73, 1],
   ];
 
+  //Setup AOV Legend table
+  // n color values corresponds to n-1 breakpoints
+  var aovColors =  [
+      [165,0,38,1],
+      [215,48,39,1],
+      [244,109,67,1],
+      [253,174,97,1],
+      [254,224,139,1],
+      [217,239,139,1],
+      [166,217,106,1],
+      [102,189,99,1],
+      [26,152,80,1],
+      [0,104,55,1]
+    ];
+
+  var aovBreakpoints =  [
+      0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9
+  ];
+
+  setupAOVLegend(aovColors, aovBreakpoints);
+  
   //set up proxyUrl
   if(useProxy){
     urlUtils.addProxyRule({
@@ -382,17 +433,80 @@ require([
     },
   };
 
-  //File Upload
+  var aovReferenceBusSymbol = {
+    type: "simple-marker",
+    style: "x",
+    outline: { width: 1.25, color: [255, 0, 0, 1] },
+    size: 8,
+  }
+
+  //AOV File Upload
+  document.getElementById("clear-aov").addEventListener("click", (event) => {
+    //clear form data
+    document.getElementById("uploadForm").reset();
+    //clear map graphics
+    resetEnvironment(false);
+  });
+
   document.getElementById("uploadForm").addEventListener("change", (event) => {
     var reader = new FileReader();
     reader.onload = (event) => {
-      csvData = $.csv.toObjects(event.target.result);
+      var csvData = $.csv.toObjects(event.target.result);
+      aovLayer.removeAll();
+      plotAoVOnMap(csvData);
     }
     reader.onerror = (err) => {
       alert(JSON.stringify(err));
     }
     event.target.files.length > 0 && reader.readAsText(event.target.files[0]);
   });
+
+  //Determine color for Area of Vulnerability
+  function aovColorVal(value) {
+      
+    let numValue = parseFloat(value);
+
+    //0 case
+    if (0 <= numValue < aovBreakpoints[0]) {
+      return aovColors[0];
+    };
+
+    //1 to (n-1)
+    for(i = 0; i < aovBreakpoints.length; i++) {
+        if (aovBreakpoints[i] <= numValue < aovBreakpoints[i + 1]) {
+          return aovColors[i + 1];    
+        };
+    };
+
+    //n case
+    return aovColors[aovColors.length - 1];
+  }
+
+  function aovLineSymbol(value) {
+    var colorVal = aovColorVal(value);
+
+    var symbol = {
+      type: "simple-line",
+      color: colorVal,
+      width: 2
+    };
+
+    return symbol;
+  }
+  
+  function aovStatusSymbol(value) {
+    var colorVal = aovColorVal(value);
+    
+    var symbol = {
+      type: "simple-marker",
+      style: "circle",
+      outline: { width: 1.5, color: [0, 0, 0, 1] },
+      color: colorVal,
+      size: 8,
+    };
+    
+    return symbol;
+  }
 
   function fiStatusSymbol(status) {
     var curStatus = status.toUpperCase();
@@ -444,6 +558,7 @@ require([
   var faultsLayer = new GraphicsLayer();
   var startStationLayer = new GraphicsLayer();
   var fiStatusLayer = new GraphicsLayer();
+  var aovLayer = new GraphicsLayer();
   //var bufferLayer = new GraphicsLayer();
 
   const switchLabel = JSON.parse(data.switchLabel);
@@ -491,6 +606,26 @@ require([
     title: "Structure: {" + `${structureTitleField}` + "}",
     outFields: ["*"],
     content: distanceToStation,
+  };
+
+  var aovPopupTemplate = {
+    title: aovPopuptitle,
+    content: [
+      {
+        type: "fields",
+        fieldInfos: null,
+      },
+    ],
+  };
+
+  var aovLinePopupTemplate = {
+    title: aovLinePopuptitle,
+    content: [
+      {
+        type: "fields",
+        fieldInfos: aovLinePopupFields
+      }
+    ]
   };
 
   var ltgPopupTemplate = {
@@ -564,6 +699,7 @@ require([
       faultsLayer,
       startStationLayer,
       fiStatusLayer,
+      aovLayer,
     ],
   });
 
@@ -1945,6 +2081,7 @@ require([
     faultsLayer.removeAll();
     startStationLayer.removeAll();
     fiStatusLayer.removeAll();
+    aovLayer.removeAll();
 
     faultLocID = 0;
     lastIndex = 0;
@@ -2524,6 +2661,155 @@ require([
     return fltPts;
   }
 
+  function plotAoVOnMap(csvData) {
+    let zoomPoint;
+    try {
+
+      //Sort our data by bus1name
+      //csvData.sort(function(first, second){
+      //  if (first.Bus1Name < second.Bus1Name)
+      //    return -1;
+      //  if (first.Bus1Name > second.Bus1Name)
+      //    return 1;
+      //  return 0;
+      //});
+
+      //Replace empty voltages with 1
+      csvData.forEach(x => {
+        if (x.Bus1Val == '')
+          x.Bus1Val = 1;
+        if (x.Bus2Val == '')
+          x.Bus2Val = 1;
+      });
+      
+      //Set all matching bus names to min value for that bus
+      let uniqueNames1 = [...new Set(csvData.map(x => x.Bus1Name))];
+      let uniqueNames2 = [...new Set(csvData.map(x => x.Bus2Name))];
+      let allUniqueNames = new Set([...uniqueNames1, ...uniqueNames2]);
+      
+      allUniqueNames.forEach(nameToSet => {
+        let minVal1 = Math.min(...csvData.filter(x => x.Bus1Name === nameToSet).map(x => x.Bus1Val));
+        let minVal2 = Math.min(...csvData.filter(x => x.Bus2Name === nameToSet).map(x => x.Bus2Val));
+        let realMinVal = Math.min(minVal1, minVal2);
+        csvData.forEach(x => {
+          if (x.Bus1Name === nameToSet) {
+            x.Bus1Val = realMinVal;
+          }
+          if (x.Bus2Name === nameToSet) {
+            x.Bus2Val = realMinVal;
+          }
+        });
+      });
+
+      let pointsPlotted = [];
+
+      //Used to determine if we've already plotted a bus node
+      let uniqueNameArray = Array.from(allUniqueNames);
+      
+      for(pt in csvData) {
+        var aovAttributes = csvData[pt];
+
+        //Plot the reference bus
+        if (aovAttributes["Bus1Name"].toLowerCase().includes("reference")) {
+          var referencePoint = getPoint(aovAttributes["Bus1X"], aovAttributes["Bus1Y"]);
+          aovPopupTemplate.content[0].fieldInfos = aov1PopupFields;
+          var referenceBus = new Graphic({
+            geometry: referencePoint,
+            symbol: aovReferenceBusSymbol,
+            attributes: aovAttributes,
+            popupTemplate: aovPopupTemplate,
+          });
+          aovLayer.add(referenceBus);
+          pointsPlotted.push(referenceBus);
+        }
+
+        //Skip over rows missing coordinates
+        if (isNaN(aovAttributes["Bus1X"]) || isNaN(aovAttributes["Bus1Y"]) || isNaN(aovAttributes["Bus2X"]) || isNaN(aovAttributes["Bus2Y"]))
+          continue;
+        
+        var aovpoint1 = getPoint(aovAttributes["Bus1X"], aovAttributes["Bus1Y"]);
+        var aovpoint2 = getPoint(aovAttributes["Bus2X"], aovAttributes["Bus2Y"]);
+        zoomPoint = aovpoint1;
+  
+        aovPopupTemplate.content[0].fieldInfos = aov1PopupFields;
+        var aovSymbol1 = aovStatusSymbol(aovAttributes["Bus1Val"]);
+
+        //Cache line name for plotting the line
+        var lineNameCache = aovAttributes["LineName"];
+        
+        //Get all lines for aovSymbol1
+        var lines1 = csvData.filter(lineItem => lineItem.Bus1Name === aovAttributes.Bus1Name).map(lineItem => lineItem.LineName);
+        var lines2 = csvData.filter(lineItem => lineItem.Bus2Name === aovAttributes.Bus1Name).map(lineItem => lineItem.LineName);
+        var lines = [...lines1, ...lines2];
+        aovAttributes.LineName = lines.join('<br/>');
+        var aov1 = new Graphic({
+          geometry: aovpoint1,
+          symbol: aovSymbol1,
+          attributes: aovAttributes,
+          popupTemplate: aovPopupTemplate,
+        });
+        
+        aovPopupTemplate.content[0].fieldInfos = aov2PopupFields;
+        var aovSymbol2 = aovStatusSymbol(aovAttributes["Bus2Val"]);
+        //lines1 = [];
+        //lines2 = [];
+        //lines = [];
+        //Get all lines for aovSymbol2
+        //lines1 = csvData.filter(lineItem => lineItem.Bus1Name === aovAttributes.Bus2Name).map(lineItem => lineItem.LineName);
+        //lines2 = csvData.filter(lineItem => lineItem.Bus2Name === aovAttributes.Bus2Name).map(lineItem => lineItem.LineName);
+        //lines = [...lines1, ...lines2];
+        //aovAttributes.LineName = lines.join(',');
+        var aov2 = new Graphic({
+          geometry: aovpoint2,
+          symbol: aovSymbol2,
+          attributes: aovAttributes,
+          popupTemplate: aovPopupTemplate,
+        });
+        
+        const polyLine = {
+          type: "polyline",
+          paths: [
+            [aovpoint1.longitude, aovpoint1.latitude],
+            [aovpoint2.longitude, aovpoint2.latitude],
+          ]
+        };
+  
+        var aovLineAttributes = {
+          "Line": lineNameCache, 
+          "Value": Math.min(aovAttributes["Bus1Val"], aovAttributes["Bus2Val"])
+        };
+        
+        var aovLineStatus = aovLineSymbol(aovLineAttributes.Value);
+        
+        var aovLine = new Graphic({
+          geometry: polyLine,
+          symbol: aovLineStatus,
+          attributes: aovLineAttributes,
+          popupTemplate: aovLinePopupTemplate,
+        });
+
+        //Look up bus node in unique name aray.  Plot if in array, then remove from array
+        var uniqueNameIndex = uniqueNameArray.indexOf(aov1.attributes.Bus1Name);
+        if (uniqueNameIndex > -1) {
+          aovLayer.add(aov1);
+          uniqueNameArray.splice(uniqueNameIndex, 1);
+        }
+        uniqueNameIndex = uniqueNameArray.indexOf(aov2.attributes.Bus2Name);
+        if (uniqueNameIndex > -1) {
+          aovLayer.add(aov2);
+          uniqueNameArray.splice(uniqueNameIndex, 1);
+        }
+       
+        aovLayer.add(aovLine);
+      }
+    } catch (error) {
+      alert(error);
+    } finally {
+      zoomTo(zoomPoint);
+      view.zoom = 14;
+    }
+  }
+
   function findNearestStructures(faultPoints) {
     //buffer faultPoints
     var params = new BufferParameters({
@@ -2755,14 +3041,14 @@ require([
     var reqJSON = {
       "geometry" : {
         "type" : "Polygon",
-        "coordinates": []
+        "coordinates": [[]]
       }
     };
     for (i = 0; i < lineBuffers.rings[0].length; i++) {
       var coords=[];
-      coords.push(lineBuffer.rings[0][i][0].toFixed(4));
-      coords.push(lineBuffer.rings[0][i][1].toFixed(4));
-      reqJSON.geometry.coordinates.push(coords);
+      coords.push(parseFloat(lineBuffer.rings[0][i][0].toFixed(4)));
+      coords.push(parseFloat(lineBuffer.rings[0][i][1].toFixed(4)));
+      reqJSON.geometry.coordinates[0].push(coords);
     }
 
     return reqJSON;
@@ -2792,7 +3078,7 @@ require([
       .tz("GMT")
       .format("YYYY-MM-DDTHH:mm:ss.SSS");
     
-    var qs = `start=${gmtString}Z&end=${gmtStringstop}Z`;
+    var qs = `start=${gmtString}Z&end=${gmtStringstop}Z&inclEllipse=none&fields=analysis&page=0&size=2000`;
     return qs;
   }
 
