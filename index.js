@@ -3123,20 +3123,20 @@ require([
   //processVAPI response
   function processVAPIResponse(rsp, starttimefield){
     ltgPoints =[];
-    ltgdata = rsp;  //response should already be json object.
+    ltgdata = rsp.features ? rsp.features : rsp;  //response should already be json object.
     //loop through events
     for(i=0;i<ltgdata.length;i++){
-      var lTime = moment(ltgdata[i].time);
+      var lTime = moment(ltgdata[i].properties ? ltgdata[i].properties.time : ltgdata[i].time);
       var curTime = lTime.clone().tz(timezone).format("MM/DD/YYYY HH:mm:ss.SSS");
       ltgPoints.push({
         id: i,
-        lat: ltgdata[i].location.coordinates[1],
-        lon: ltgdata[i].location.coordinates[0],
-        signal: ltgdata[i].signalStrengthKA,
+        lat: ltgdata[i].geometry ? ltgdata[i].geometry.coordinates[1] : ltgdata[i].location.coordinates[1],
+        lon: ltgdata[i].geometry ? ltgdata[i].geometry.coordinates[0] : ltgdata[i].location.coordinates[0],
+        signal: ltgdata[i].properties ? ltgdata[i].properties.signalStrengthKA : ltgdata[i].signalStrengthKA,
         time: curTime,
-        smin: ltgdata[i].ellSemiMinM,
-        smaj: ltgdata[i].ellSemiMajM,
-        angle: degree2Radium(ltgdata[i].ellAngleDeg),
+        smin: ltgdata[i].properties ? ltgdata[i].properties.ellSemiMinM : ltgdata[i].ellSemiMinM,
+        smaj: ltgdata[i].properties ? ltgdata[i].properties.ellSemiMajM : ltgdata[i].ellSemiMajM,
+        angle: degree2Radium(ltgdata[i].properties ? ltgdata[i].properties.ellAngleDeg : ltgdata[i].ellAngleDeg),
       });
 
     }
