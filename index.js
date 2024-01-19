@@ -3108,20 +3108,24 @@ require([
     var authtoken = authresponse.access_token;
     xhttp.responseType='json';
 
+
     if(apiType=="polygon") {
       var qs=makeVAPIpolyQueryString();
       var apiurl = `${integratorpolyurl}${qs}`;
       xhttp.open("POST",apiurl,true);
-      xhttp.body = reqbody;
       xhttp.setRequestHeader("Accept", "application/geo+json");
       xhttp.setRequestHeader("Content-Type", "application/json");
+      xhttp.setRequestHeader("Authorization", "Bearer " + authtoken);
+      xhttp.send(JSON.stringify(reqbody));
     } else {
       var qs=makeVAPIpointQueryString();
       var apiurl = `${integratorbboxurl}${qs}`;
       xhttp.open("GET",apiurl,true);
+      xhttp.setRequestHeader("Authorization", "Bearer " + authtoken);
+      xhttp.send();
     }
-    xhttp.setRequestHeader("Authorization", "Bearer " + authtoken);
-    xhttp.send();
+
+
   }
 
   //processVAPI response
