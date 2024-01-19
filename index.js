@@ -1848,8 +1848,12 @@ require([
 
   function populateStationDropDown(lineGeometries) {
       //buffer lineGeometries
+      var distance=1000;
+      if(useStationFilter){
+        distance=2000;
+      }
       var params = new BufferParameters({
-        distances: [1000],
+        distances: [distance],
         unit: "feet",
         geodesic: true,
         geometries: lineGeometries,
