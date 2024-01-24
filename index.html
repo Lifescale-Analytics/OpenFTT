@@ -33,6 +33,7 @@
       <div id="infoDiv" class="esri-widget">
          <div id="btnPanel" class="tab">
             <button class="tablinks" onclick="openTab(event,'fltPanel');" id="defaultOpen">Faults</button>
+            <button class="tablinks" onclick="openTab(event,'evtPanel');" id="eventPanel">Events</button>
             <button class="tablinks" onclick="openTab(event,'ltgPanel');" id="lightningPanel">Lightning</button>
             <button class="tablinks" onclick="openTab(event,'dataPanel');" id="dataPanelbtn">AOV</button>
             <button class="tablinks" onclick="openTab(event,'bookmarkPanel');">Bookmark</button>
@@ -73,6 +74,13 @@
                   </td>
                </tr>
             </table>
+         </div>
+         <div id="evtPanel" class="tabcontent">
+            <span>URL:</span><input type="text" id="events-url" size="45"/>&nbsp;
+            <button id="load-events">Load</button>&nbsp;
+            <button id="clear-events">Clear Results</button>&nbsp;
+            <br/>
+            <span><input id="evtdefault" type="checkbox"/>&nbsp;Set as default tab</span>
          </div>
          <div id="ltgPanel" class="tabcontent">
             <table border=0 cellpadding=0 cellspacing=0>
@@ -181,8 +189,21 @@
                <tbody id="tbltg"></tbody>
             </table>
          </div>
+         <div id="evtresults" class="esri-widget selectable" style="display:none;height:300px;overflow-y:auto">
+               <B>Events:</B><br/>
+               <table id="resultstblevt" width="100%">
+                  <thead>
+                     <tr>
+                        <th align="left">Date/Time</th>
+                        <th align="left">Line</th>
+                        <th align="left">Substation</th>
+                        <th align="left">Distance</th>
+                     </tr>
+                  </thead>
+                  <tbody id="tblevt"></tbody>
+               </table>
+         </div>
       </div>
-
       <div class="minimized-info-bar" id="minimizedInfoBar" style="display: none;">FTT Toolbar <button class="maximize" id="maximizeButton" title="Maximize Window"><i class="fa fa-plus" aria-hidden="true"></i></button></div>
    </body>
 </html>

@@ -65,6 +65,7 @@ th, td {
   padding-bottom: 15px;
 }
 
+#evtresults,
 #fltresults,
 #ltgresults {
   padding-top: 10px;
@@ -177,6 +178,14 @@ th, td {
   border-radius: 50%;
   border: 2px solid #000;
   margin: auto;
+}
+
+.selectable tr {
+  cursor: pointer;
+}
+
+.selectable tr:hover {
+  background-color: lightgrey;
 }
 
 @keyframes lds-ripple {

@@ -15,6 +15,7 @@ function getCookie(cname) {
 
 function checkCookie() {
   let autozoom = (getCookie("autozoomtofault")==='true');
+  eventDefault = (getCookie("eventtabdefault")==='true');
   document.getElementById("autozoom").checked = autozoom;
 }
 
@@ -66,28 +67,31 @@ function getInfoDivMinHeight(){
       openBlock=1;
       switch(i){
         case 0:
-        case 1:
+        case 2:
           //faults, lightning
           minHeight=156;
           break;
-        case 2:
+        case 3:
           //AOV
           minHeight=278;
           break;
-
-        case 3:
-        case 6:
+        case 1:
+          //events
+          minHeight=80;
+          break;
+        case 4:
+        case 7:
           //bookmarks,  help
           minHeight=71;
           break;
-        case 5:
+        case 6:
           //tools
           minHeight=71;
           if($("#printpanel")[0].style.display=='block') { 
             minHeight +=500;
           }
           break;
-        case 4:
+        case 5:
           //legend
           minHeight=223;
           break;
@@ -106,6 +110,11 @@ function getInfoDivMinHeight(){
 
   //is the fltresults tab open
   if($("#fltresults")[0].style.display=='block'){
+    minHeight+=300;
+  }
+
+  //is the evtresults tab open
+  if($("#evtresults")[0].style.display=='block'){
     minHeight+=300;
   }
 
@@ -321,6 +330,7 @@ require([
   var infoFields = fiFields.map((f) => f);
   var fiStatusFields = fiFields.map((f) => f.fieldName);
   var fiHealthStatus = false;
+  var eventDefault = false;
 
   var aov1PopupFields = data.aov1PopupFields;
   var aov2PopupFields = data.aov2PopupFields;
@@ -1212,6 +1222,11 @@ require([
     resetEnvironment(false);
   });
 
+  var btnClearEvents = document.getElementById("clear-events");
+  btnClearEvents.addEventListener("click", function() {
+    resetEnvironment(false);
+  });
+
   var checkAutozoom = document.getElementById("autozoom");
   checkAutozoom.addEventListener("click", function() {
     setCookie("autozoomtofault", checkAutozoom.checked, 365);
@@ -1273,6 +1288,8 @@ require([
   var btnLocateLightningADV = document.getElementById("locate-adv-lightning");
   var btnLocateFault = document.getElementById("locate-faults");
   var btnLocateLightning = document.getElementById("locate-lightning");
+  var btnLoadEvents = document.getElementById("load-events");
+  var chkEventDefault = document.getElementById("evtdefault");
 
   function stationChangeFunc(startStationName) {
     stationLayer.createFeatureLayer().then(function (startStationLayer) {
@@ -1350,6 +1367,19 @@ require([
         lightningSearch();
       }
     });
+
+    btnLoadEvents.addEventListener("click", async function () {
+      let eventsUrl = document.getElementById("events-url");
+      let request = new Request(eventsUrl.value);
+      let response = await fetch(request);  
+      let events = await response.json();
+      plotEvents(events.Events);
+    });
+
+    chkEventDefault.addEventListener("click", function() {
+      setCookie("eventtabdefault", chkEventDefault.checked, 365)
+    });
+    
   }
 
   function validateLightningParms(showAlert = false) {
@@ -2105,6 +2135,12 @@ require([
     newtbltg.setAttribute("id", "tbltg");
     tbodyltg.parentNode.replaceChild(newtbltg, tbodyltg);
 
+    //clear events table
+    var tbodyevt = document.getElementById("tblevt");
+    var newtblevt = document.createElement("tbody");
+    newtblevt.setAttribute("id", "tblevt");
+    tbodyevt.parentNode.replaceChild(newtblevt, tbodyevt);
+
     //hide fault results block
     var fltresultdiv = document.getElementById("fltresults");
     fltresultdiv.style.display = "none";
@@ -2112,6 +2148,10 @@ require([
     //hide lighting results block
     var ltgresultdiv = document.getElementById("ltgresults");
     ltgresultdiv.style.display = "none";
+
+    //hide eveent results block
+    var evtresultsdiv = document.getElementById("evtresults");
+    evtresultsdiv.style.display = "none";
 
     //document.getElementById("ltgLat").value="";
     //document.getElementById("ltgLon").value="";
@@ -3432,6 +3472,63 @@ require([
     return polygonRings;
   };
 
+  function plotEvents(events) {
+    let evtresultdiv = document.getElementById("evtresults");
+    evtresultdiv.style.display = "block";
+    getInfoDivMinHeight();
+    let tbl = document
+      .getElementById("resultstblevt")
+      .getElementsByTagName("tbody")[0];
+
+    for (evt in events) {
+      let row = tbl.insertRow(tbl.rows.length);
+      row.addEventListener("click", function(event) {
+        document.body.style.cursor = "wait";
+        let eventToPlot = event.target.parentNode.childNodes;
+        let datetime = eventToPlot[0].textContent;
+        let line = eventToPlot[1].textContent;
+        let substation = eventToPlot[2].textContent;
+        let distance = eventToPlot[3].textContent;
+        document.getElementById("evttime").value = datetime;
+
+        let lineSelect = document.getElementById("lineSelect")
+        for (let i = 0; i < lineSelect.options.length; i++) {
+          if (lineSelect.options[i].innerText === line) {
+            lineSelect.selectedIndex = i;
+            let lineEvent = new Event('change');
+            lineSelect.dispatchEvent(lineEvent);
+            break;
+          }
+        }
+        setTimeout(() => {
+          let stationSelect = document.getElementById("stationSelect");
+          for (let i = 0; i < stationSelect.options.length; i++) {
+            if (stationSelect.options[i].innerText === substation) {
+              stationSelect.selectedIndex = i;
+              let stationEvent = new Event('change');
+              stationSelect.dispatchEvent(stationEvent);
+              break;
+            }
+          }
+          document.getElementById("faultDistance").value = distance;
+          setTimeout(() => {
+            document.getElementById("locate-faults").click();
+            document.body.style.cursor = "default";
+          }, 1500);
+        }, 3500);
+      });
+      let date = row.insertCell(0);
+      let line = row.insertCell(1);
+      let substation = row.insertCell(2);
+      let distance = row.insertCell(3);
+
+      date.innerHTML = events[evt]["Event_datetime"];
+      line.innerHTML = events[evt]["Line"];
+      substation.innerHTML = events[evt]["Substation"];
+      distance.innerHTML = events[evt]["Distance_miles"];
+    }
+  }
+  
   function plotLightning(ltgPoints) {
     var ltgtresultdiv = document.getElementById("ltgresults");
     ltgtresultdiv.style.display = "block";
@@ -3536,7 +3633,13 @@ require([
 
 $(document).ready(function () {
   checkCookie();
-  document.getElementById("defaultOpen").click();
+  if (eventDefault) {
+    document.getElementById("eventPanel").click();
+    document.getElementById("evtdefault").checked = true;
+  } else {
+    document.getElementById("defaultOpen").click();
+    document.getElementById("evtdefault").checked = false;
+  }
   $("#evttime").datetimepicker({
     timeFormat: "HH:mm:ss.l",
   });
