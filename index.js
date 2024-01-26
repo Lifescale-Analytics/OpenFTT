@@ -325,7 +325,6 @@ require([
   var eventsURL = data.eventsURL;
   var eventsRefreshInterval = parseInt(data.eventsRefreshInterval);
   
-  
   var structureKeyField = fltStructureFields
     .filter((f) => f.key)
     .map((f) => f.name)[0];
@@ -1404,7 +1403,7 @@ require([
 
     btnLoadEvents.addEventListener("click", async function () {
       let request = new Request(eventsURL);
-      let response = await fetch(request);  
+      let response = await fetch(request, {cache: 'no-cache'});  
       let events = await response.json();
       plotEvents(events.Events);
     });
@@ -1836,8 +1835,8 @@ require([
     ltgevttimestop.value = evttime.value;
 
     var evtstarttime = document.getElementById("evtstarttime");
-    evtstarttime.value = evttime.value;
-
+    evtstarttime.value = moment(evttime.value).subtract(24, "hours").format("MM/DD/YYYY HH:mm:ss.SSS");
+    
     var evtstoptime = document.getElementById("evtstoptime");
     evtstoptime.value = evttime.value;
   }
@@ -3565,9 +3564,9 @@ require([
       });
       
       //check for valid dateTime
-      const dateToCheck = Date.parse(events[evt]["Event_datetime"]);
-      const startDate = Date.parse(document.getElementById("evtstarttime").value);
-      const endDate = Date.parse(document.getElementById("evtstoptime").value);
+      const dateToCheck = new Date(moment(events[evt]["Event_datetime"]).format("YYYY-MM-DDTHH:mm:ss.SSS"));
+      const startDate = new Date(moment(document.getElementById("evtstarttime").value).format("YYYY-MM-DDTHH:mm:ss.SSS"));
+      const endDate = new Date(moment(document.getElementById("evtstoptime").value).format("YYYY-MM-DDTHH:mm:ss.SSS"));
       if (dateToCheck >= startDate && dateToCheck <= endDate) {
         numEvents++;
         let date = row.insertCell(0);
@@ -3689,6 +3688,11 @@ require([
 
 $(document).ready(function () {
   checkCookie();
+
+  if (configValues.enableEventsTab === "false") {
+    document.getElementById("eventPanel").style.display = "none";
+  }
+  
   if (eventDefault) {
     document.getElementById("eventPanel").click();
     document.getElementById("evtdefault").checked = true;
