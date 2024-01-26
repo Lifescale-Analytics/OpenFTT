@@ -83,6 +83,15 @@
                      id="evtstoptime" type="text" size="18"><span class="current-timezone"></span> </td>
                </tr>
             </table>
+               <span>Event Time Frame:&nbsp;</span>
+               <select id="eventTimeFrame">
+                     <option value="24">24 Hours</option>
+                     <option value="12">12 Hours</option>
+                     <option value="6">6 Hours</option>
+                     <option value="1">1 Hour</option>
+               </select>
+               <span><input id="autorefreshevts" type="checkbox"/>&nbsp;Auto Refresh</span>
+               <br/>
             <button id="load-events">Refresh</button>&nbsp;
             <button id="clear-events">Clear Results</button>&nbsp;
             <span><input id="evtdefault" type="checkbox"/>&nbsp;Set as default tab</span>
@@ -203,6 +212,7 @@
                         <th align="left">Line</th>
                         <th align="left">Substation</th>
                         <th align="left">Distance</th>
+                        <th align="left">Waveform</th>
                      </tr>
                   </thead>
                   <tbody id="tblevt"></tbody>

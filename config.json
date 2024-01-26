@@ -16,6 +16,7 @@
 	"eventsURL": "http://<<events URL and port info>>",
 	"eventsRefreshInterval": "60",
 	"enableEventsTab": "true",
+	"waveformURL": "http://<<URL and port to show event waveform>>",
 	"mapSpatialReference":"3857",
 	"bufferSpatialReference":"4326",
 	"lightningBufferSpatialReference":"3857",

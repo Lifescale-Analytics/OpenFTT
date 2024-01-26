@@ -32,6 +32,27 @@ function clearEventsTable() {
   tbodyevt.parentNode.replaceChild(newtblevt, tbodyevt);
 }
 
+function updateEventTimes(timespan) {
+  var evtstoptime = document.getElementById("evtstoptime");
+  evtstoptime.value = moment().format("MM/DD/YYYY HH:mm:ss.SSS");
+  
+  var evtstarttime = document.getElementById("evtstarttime");
+  evtstarttime.value = moment(evtstoptime.value).subtract(timespan, "hours").format("MM/DD/YYYY HH:mm:ss.SSS");
+}
+
+function enableAutoEventRefresh() {
+  eventIntervalID = setInterval(function() {
+      clearEventsTable();
+      updateEventTimes(eventTimeFrame);
+      document.getElementById("load-events").click();  
+    }, parseInt(configValues.eventsRefreshInterval) * 1000); 
+}
+
+function disableAutoEventRefresh() {
+  eventIntervalID && clearInterval(eventIntervalID);
+  eventIntervalID = null;
+}
+
 function openTab(evt, tabName) {
   var evttime = document.getElementById("evttime");
   var ltgevttime = document.getElementById("ltgevttime");
@@ -48,16 +69,10 @@ function openTab(evt, tabName) {
     //clear & load events
     clearEventsTable();
     document.getElementById("load-events").click();
-    //set reload timer
-    eventIntervalID = setInterval(function() {
-      clearEventsTable();
-      document.getElementById("load-events").click();  
-    }, parseInt(configValues.eventsRefreshInterval) * 1000); 
   } else {
     //clear reload timer, remove grid data and hide div
     clearEventsTable();
-    eventIntervalID && clearInterval(eventIntervalID);
-    eventIntervalID = null;
+    disableAutoEventRefresh();
     var evtresultsdiv = document.getElementById("evtresults");
     evtresultsdiv.style.display = "none";
   }
@@ -107,7 +122,7 @@ function getInfoDivMinHeight(){
           break;
         case 1:
           //events
-          minHeight=80;
+          minHeight=100;
           break;
         case 4:
         case 7:
@@ -324,6 +339,7 @@ require([
   var spanTolerance = parseFloat(data.spanTolerance);
   var eventsURL = data.eventsURL;
   var eventsRefreshInterval = parseInt(data.eventsRefreshInterval);
+  var waveformURL = data.waveformURL;
   
   var structureKeyField = fltStructureFields
     .filter((f) => f.key)
@@ -395,6 +411,7 @@ require([
   var bookmarkFuncsWithBookmark = [];
   var loader = $("#loader");
   var previousLineIndex = -1;
+  var eventTimeFrame = 24;
 
   //change color for multi-endied fault location
   //var faultLocID = 0;
@@ -1402,10 +1419,10 @@ require([
     });
 
     btnLoadEvents.addEventListener("click", async function () {
-      let request = new Request(eventsURL);
+      let request = new Request(`${eventsURL}?starttime=${evtstarttime.value}&endtime=${evtstoptime.value}`);
       let response = await fetch(request, {cache: 'no-cache'});  
       let events = await response.json();
-      plotEvents(events.Events);
+      plotEvents(events);
     });
 
     chkEventDefault.addEventListener("click", function() {
@@ -3513,6 +3530,7 @@ require([
   };
 
   function plotEvents(events) {
+    clearEventsTable();
     let evtresultdiv = document.getElementById("evtresults");
     evtresultdiv.style.display = "block";
     getInfoDivMinHeight();
@@ -3520,6 +3538,20 @@ require([
     let tbl = document
       .getElementById("resultstblevt")
       .getElementsByTagName("tbody")[0];
+
+    document.getElementById("eventTimeFrame").addEventListener("change", function(event) {
+      eventTimeFrame = event.target.value;
+      updateEventTimes(eventTimeFrame);
+    });
+
+    document.getElementById("autorefreshevts").addEventListener("change", function(event) {
+      if (event.target.checked) {
+        enableAutoEventRefresh();
+      }
+      else {
+        disableAutoEventRefresh();
+      }
+    });
 
     for (evt in events) {
       let row = tbl.insertRow(tbl.rows.length);
@@ -3564,7 +3596,7 @@ require([
       });
       
       //check for valid dateTime
-      const dateToCheck = new Date(moment(events[evt]["Event_datetime"]).format("YYYY-MM-DDTHH:mm:ss.SSS"));
+      const dateToCheck = new Date(moment(events[evt]["event_datetime"]).format("YYYY-MM-DDTHH:mm:ss.SSS"));
       const startDate = new Date(moment(document.getElementById("evtstarttime").value).format("YYYY-MM-DDTHH:mm:ss.SSS"));
       const endDate = new Date(moment(document.getElementById("evtstoptime").value).format("YYYY-MM-DDTHH:mm:ss.SSS"));
       if (dateToCheck >= startDate && dateToCheck <= endDate) {
@@ -3573,10 +3605,19 @@ require([
         let line = row.insertCell(1);
         let substation = row.insertCell(2);
         let distance = row.insertCell(3);
-        date.innerHTML = events[evt]["Event_datetime"];
-        line.innerHTML = events[evt]["Line"];
-        substation.innerHTML = events[evt]["Substation"];
-        distance.innerHTML = events[evt]["Distance_miles"];
+        let waveform = row.insertCell(4);
+        date.innerHTML = events[evt]["event_datetime"];
+        line.innerHTML = events[evt]["line"];
+        substation.innerHTML = events[evt]["substation"];
+        distance.innerHTML = events[evt]["distance_miles"];
+        let waveformButton = document.createElement("button");
+        waveformButton.textContent = "Open";
+        waveformButton.addEventListener("click", function () {
+          document.body.style.curor = "default"
+          window.open(`${waveformURL}?eventid=${events[evt]["eventid"]}`, "_blank")
+          
+        });
+        waveform.appendChild(waveformButton);
       }
     }
     if (numEvents === 0) {
@@ -3689,7 +3730,7 @@ require([
 $(document).ready(function () {
   checkCookie();
 
-  if (configValues.enableEventsTab === "false") {
+  if (!configValues.enableEventsTab) {
     document.getElementById("eventPanel").style.display = "none";
   }
   
