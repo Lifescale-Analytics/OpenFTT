@@ -76,10 +76,15 @@
             </table>
          </div>
          <div id="evtPanel" class="tabcontent">
-            <span>URL:</span><input type="text" id="events-url" size="45"/>&nbsp;
-            <button id="load-events">Load</button>&nbsp;
+            <table border=0 cellpadding=0 cellspacing=0>
+               <tr valign="top">
+                  <td>Start Time:</td>
+                  <td><input id="evtstarttime" type="text" size="18">&nbsp;<span class="current-timezone"></span>&nbsp;&nbsp; Stop Time:<input
+                     id="evtstoptime" type="text" size="18"><span class="current-timezone"></span> </td>
+               </tr>
+            </table>
+            <button id="load-events">Refresh</button>&nbsp;
             <button id="clear-events">Clear Results</button>&nbsp;
-            <br/>
             <span><input id="evtdefault" type="checkbox"/>&nbsp;Set as default tab</span>
          </div>
          <div id="ltgPanel" class="tabcontent">

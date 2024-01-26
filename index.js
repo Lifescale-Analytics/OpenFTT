@@ -1,3 +1,9 @@
+let eventIntervalID;
+var configValues;
+$.getJSON('config.json', function(config) {
+  configValues = config;
+});
+
 function getCookie(cname) {
   let name = cname + "=";
   let ca = document.cookie.split(";");
@@ -19,6 +25,12 @@ function checkCookie() {
   document.getElementById("autozoom").checked = autozoom;
 }
 
+function clearEventsTable() {
+  var tbodyevt = document.getElementById("tblevt");
+  var newtblevt = document.createElement("tbody");
+  newtblevt.setAttribute("id", "tblevt");
+  tbodyevt.parentNode.replaceChild(newtblevt, tbodyevt);
+}
 
 function openTab(evt, tabName) {
   var evttime = document.getElementById("evttime");
@@ -30,6 +42,24 @@ function openTab(evt, tabName) {
     //copy evttime from fault panel
     ltgevttime.value = evttime.value;
     //ltgwindow.value = evtwindow.value;
+  }
+
+  if (tabName == "evtPanel") {
+    //clear & load events
+    clearEventsTable();
+    document.getElementById("load-events").click();
+    //set reload timer
+    eventIntervalID = setInterval(function() {
+      clearEventsTable();
+      document.getElementById("load-events").click();  
+    }, parseInt(configValues.eventsRefreshInterval) * 1000); 
+  } else {
+    //clear reload timer, remove grid data and hide div
+    clearEventsTable();
+    eventIntervalID && clearInterval(eventIntervalID);
+    eventIntervalID = null;
+    var evtresultsdiv = document.getElementById("evtresults");
+    evtresultsdiv.style.display = "none";
   }
 
   //else {
@@ -292,7 +322,10 @@ require([
   var useStructureLabel = data.useStructureLabel;
   var useSpanTolerance = data.useSpanTolerance;
   var spanTolerance = parseFloat(data.spanTolerance);
-
+  var eventsURL = data.eventsURL;
+  var eventsRefreshInterval = parseInt(data.eventsRefreshInterval);
+  
+  
   var structureKeyField = fltStructureFields
     .filter((f) => f.key)
     .map((f) => f.name)[0];
@@ -362,6 +395,7 @@ require([
   var bookmarkParams = [];
   var bookmarkFuncsWithBookmark = [];
   var loader = $("#loader");
+  var previousLineIndex = -1;
 
   //change color for multi-endied fault location
   //var faultLocID = 0;
@@ -455,7 +489,7 @@ require([
     //clear form data
     document.getElementById("uploadForm").reset();
     //clear map graphics
-    resetEnvironment(false);
+    resetEnvironment(false, false);
   });
 
   document.getElementById("uploadForm").addEventListener("change", (event) => {
@@ -470,7 +504,7 @@ require([
     }
     event.target.files.length > 0 && reader.readAsText(event.target.files[0]);
   });
-
+  
   //Determine color for Area of Vulnerability
   function aovColorVal(value) {
       
@@ -1214,17 +1248,17 @@ require([
 
   var btnClearFaults = document.getElementById("clear-faults");
   btnClearFaults.addEventListener("click", function () {
-    resetEnvironment(false);
+    resetEnvironment(false, false);
   });
 
   var btnClearLightning = document.getElementById("clear-lightning");
   btnClearLightning.addEventListener("click", function () {
-    resetEnvironment(false);
+    resetEnvironment(false, false);
   });
 
   var btnClearEvents = document.getElementById("clear-events");
   btnClearEvents.addEventListener("click", function() {
-    resetEnvironment(false);
+    resetEnvironment(false, true);
   });
 
   var checkAutozoom = document.getElementById("autozoom");
@@ -1313,7 +1347,7 @@ require([
     lineSelect.addEventListener("change", function () {
       var lineID = event.target.value;
       //reset
-      resetEnvironment(true);
+      resetEnvironment(true, false);
       //make sure we aren't on Please select...
       if (lineID.length > 0) {
         //highlight line
@@ -1369,8 +1403,7 @@ require([
     });
 
     btnLoadEvents.addEventListener("click", async function () {
-      let eventsUrl = document.getElementById("events-url");
-      let request = new Request(eventsUrl.value);
+      let request = new Request(eventsURL);
       let response = await fetch(request);  
       let events = await response.json();
       plotEvents(events.Events);
@@ -1801,6 +1834,12 @@ require([
 
     var ltgevttimestop = document.getElementById("ltgevttimestop");
     ltgevttimestop.value = evttime.value;
+
+    var evtstarttime = document.getElementById("evtstarttime");
+    evtstarttime.value = evttime.value;
+
+    var evtstoptime = document.getElementById("evtstoptime");
+    evtstoptime.value = evttime.value;
   }
 
   function populateLineDropDown(showLoader = false) {
@@ -2108,7 +2147,7 @@ require([
     return stationGeometries;
   }
 
-  function resetEnvironment(full) {
+  function resetEnvironment(full, events) {
     //if full reset do everything
     //if not full reset just clear faults / start stations / lightning
     ltgLayer.removeAll();
@@ -2136,10 +2175,15 @@ require([
     tbodyltg.parentNode.replaceChild(newtbltg, tbodyltg);
 
     //clear events table
-    var tbodyevt = document.getElementById("tblevt");
-    var newtblevt = document.createElement("tbody");
-    newtblevt.setAttribute("id", "tblevt");
-    tbodyevt.parentNode.replaceChild(newtblevt, tbodyevt);
+    if (events === true) {
+      clearEventsTable();
+      var evtresultsdiv = document.getElementById("evtresults");
+      evtresultsdiv.style.display = "none";
+    }
+    //var tbodyevt = document.getElementById("tblevt");
+    //var newtblevt = document.createElement("tbody");
+    //newtblevt.setAttribute("id", "tblevt");
+    //tbodyevt.parentNode.replaceChild(newtblevt, tbodyevt);
 
     //hide fault results block
     var fltresultdiv = document.getElementById("fltresults");
@@ -2149,16 +2193,13 @@ require([
     var ltgresultdiv = document.getElementById("ltgresults");
     ltgresultdiv.style.display = "none";
 
-    //hide eveent results block
-    var evtresultsdiv = document.getElementById("evtresults");
-    evtresultsdiv.style.display = "none";
-
     //document.getElementById("ltgLat").value="";
     //document.getElementById("ltgLon").value="";
     document.getElementById("ltgAddress").value = "";
 
     //resize min infoDiv height
     getInfoDivMinHeight();
+    
 
     //clear scada mapping
     fiSCADANames.length = 0;
@@ -3476,6 +3517,7 @@ require([
     let evtresultdiv = document.getElementById("evtresults");
     evtresultdiv.style.display = "block";
     getInfoDivMinHeight();
+    let numEvents = 0;
     let tbl = document
       .getElementById("resultstblevt")
       .getElementsByTagName("tbody")[0];
@@ -3490,13 +3532,17 @@ require([
         let substation = eventToPlot[2].textContent;
         let distance = eventToPlot[3].textContent;
         document.getElementById("evttime").value = datetime;
-
+        
         let lineSelect = document.getElementById("lineSelect")
         for (let i = 0; i < lineSelect.options.length; i++) {
           if (lineSelect.options[i].innerText === line) {
-            lineSelect.selectedIndex = i;
-            let lineEvent = new Event('change');
-            lineSelect.dispatchEvent(lineEvent);
+            //Only execute if we changed lines to avoid a UI reset
+            if (previousLineIndex !== i) {
+              lineSelect.selectedIndex = i;
+              previousLineIndex = i;
+              let lineEvent = new Event('change');
+              lineSelect.dispatchEvent(lineEvent);
+            }
             break;
           }
         }
@@ -3517,15 +3563,25 @@ require([
           }, 1500);
         }, 3500);
       });
-      let date = row.insertCell(0);
-      let line = row.insertCell(1);
-      let substation = row.insertCell(2);
-      let distance = row.insertCell(3);
-
-      date.innerHTML = events[evt]["Event_datetime"];
-      line.innerHTML = events[evt]["Line"];
-      substation.innerHTML = events[evt]["Substation"];
-      distance.innerHTML = events[evt]["Distance_miles"];
+      
+      //check for valid dateTime
+      const dateToCheck = Date.parse(events[evt]["Event_datetime"]);
+      const startDate = Date.parse(document.getElementById("evtstarttime").value);
+      const endDate = Date.parse(document.getElementById("evtstoptime").value);
+      if (dateToCheck >= startDate && dateToCheck <= endDate) {
+        numEvents++;
+        let date = row.insertCell(0);
+        let line = row.insertCell(1);
+        let substation = row.insertCell(2);
+        let distance = row.insertCell(3);
+        date.innerHTML = events[evt]["Event_datetime"];
+        line.innerHTML = events[evt]["Line"];
+        substation.innerHTML = events[evt]["Substation"];
+        distance.innerHTML = events[evt]["Distance_miles"];
+      }
+    }
+    if (numEvents === 0) {
+        tbl.innerHTML = 'No Events Found';
     }
   }
   
@@ -3650,6 +3706,14 @@ $(document).ready(function () {
 
   $("#ltgevttimestop").datetimepicker({
     timeFormat: "HH:mm:ss.l",
+  });
+
+  $("#evtstarttime").datetimepicker({
+    timeFormat: "HH:mm:ss.1",
+  });
+
+  $("#evtstoptime").datetimepicker({
+    timeFormat: "HH:mm:ss.1",
   });
 
   getInfoDivMinHeight();
