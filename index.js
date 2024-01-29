@@ -37,7 +37,7 @@ function updateEventTimes(timespan) {
   evtstoptime.value = moment().format("MM/DD/YYYY HH:mm:ss.SSS");
   
   var evtstarttime = document.getElementById("evtstarttime");
-  evtstarttime.value = moment(evtstoptime.value).subtract(timespan, "hours").format("MM/DD/YYYY HH:mm:ss.SSS");
+  evtstarttime.value = moment(new Date(evtstoptime.value).toISOString()).subtract(timespan, "hours").format("MM/DD/YYYY HH:mm:ss.SSS");
 }
 
 function enableAutoEventRefresh() {
@@ -1419,7 +1419,7 @@ require([
     });
 
     btnLoadEvents.addEventListener("click", async function () {
-      let request = new Request(`${eventsURL}?starttime=${evtstarttime.value}&endtime=${evtstoptime.value}`);
+      let request = new Request(`${eventsURL}?starttime=${new Date(evtstarttime.value).toUTCString()}&endtime=${new Date(evtstoptime.value).toUTCString()}`);
       let response = await fetch(request, {cache: 'no-cache'});  
       let events = await response.json();
       plotEvents(events);
@@ -1852,7 +1852,7 @@ require([
     ltgevttimestop.value = evttime.value;
 
     var evtstarttime = document.getElementById("evtstarttime");
-    evtstarttime.value = moment(evttime.value).subtract(24, "hours").format("MM/DD/YYYY HH:mm:ss.SSS");
+    evtstarttime.value = moment(new Date(evttime.value).toISOString()).tz(timezone).subtract(24, "hours").format("MM/DD/YYYY HH:mm:ss.SSS");
     
     var evtstoptime = document.getElementById("evtstoptime");
     evtstoptime.value = evttime.value;
@@ -3596,9 +3596,10 @@ require([
       });
       
       //check for valid dateTime
-      const dateToCheck = new Date(moment(events[evt]["event_datetime"]).format("YYYY-MM-DDTHH:mm:ss.SSS"));
-      const startDate = new Date(moment(document.getElementById("evtstarttime").value).format("YYYY-MM-DDTHH:mm:ss.SSS"));
-      const endDate = new Date(moment(document.getElementById("evtstoptime").value).format("YYYY-MM-DDTHH:mm:ss.SSS"));
+	  const dateToCheck = moment(new Date(events[evt]["event_datetime"]).toISOString()).format("YYYY-MM-DDTHH:mm:ss.SSS");
+	  const startDate = moment(new Date(document.getElementById("evtstarttime").value).toISOString()).format("YYYY-MM-DDTHH:mm:ss.SSS");
+	  const endDate = moment(new Date(document.getElementById("evtstoptime").value).toISOString()).format("YYYY-MM-DDTHH:mm:ss.SSS");
+		
       if (dateToCheck >= startDate && dateToCheck <= endDate) {
         numEvents++;
         let date = row.insertCell(0);
@@ -3615,7 +3616,6 @@ require([
         waveformButton.addEventListener("click", function () {
           document.body.style.curor = "default"
           window.open(`${waveformURL}?eventid=${events[evt]["eventid"]}`, "_blank")
-          
         });
         waveform.appendChild(waveformButton);
       }
@@ -3754,11 +3754,17 @@ $(document).ready(function () {
   });
 
   $("#evtstarttime").datetimepicker({
-    timeFormat: "HH:mm:ss.1",
+    timeFormat: "HH:mm:ss.l",
+	onSelect: function() {
+		document.getElementById("autorefreshevts").checked = false;
+	}
   });
 
   $("#evtstoptime").datetimepicker({
-    timeFormat: "HH:mm:ss.1",
+    timeFormat: "HH:mm:ss.l",
+    onSelect: function() {
+		document.getElementById("autorefreshevts").checked = false;
+	}
   });
 
   getInfoDivMinHeight();
