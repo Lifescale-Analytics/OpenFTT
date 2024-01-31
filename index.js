@@ -1419,7 +1419,7 @@ require([
     });
 
     btnLoadEvents.addEventListener("click", async function () {
-      let request = new Request(`${eventsURL}?starttime=${new Date(evtstarttime.value).toUTCString()}&endtime=${new Date(evtstoptime.value).toUTCString()}`);
+      let request = new Request(`${eventsURL}?starttime=${new Date(evtstarttime.value).toISOString()}&endtime=${new Date(evtstoptime.value).toISOString()}`);
       let response = await fetch(request, {cache: 'no-cache'});  
       let events = await response.json();
       plotEvents(events);
