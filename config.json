@@ -1,4 +1,5 @@
 {
+	"serviceUrl": "https://sampleserver6.arcgisonline.com/arcgis/rest/services/USA/MapServer",
 	"servername": "http://<<arcgis server and port info>>",
 	"useProxy": true,
 	"proxyURL": "serverIParcgisproxy/proxy.ashx",
