@@ -8,11 +8,13 @@ define([
   "esri/geometry/Polyline",
   "esri/geometry/Point",
   "esri/layers/GraphicsLayer",
+  "esri/layers/FeatureLayer",
   "esri/tasks/locator",
   "esri/tasks/GeometryService",
   "esri/geometry/geometryEngine",
   "esri/tasks/ProjectParameters",
   "esri/tasks/BufferParameters",
+  "esri/tasks/QueryTask",
   "esri/tasks/query",
   "esri/graphic",
   "esri/SpatialReference",
@@ -24,6 +26,9 @@ define([
   "esri/geometry/webMercatorUtils",
   "esri/symbols/PictureMarkerSymbol",
   "esri/symbols/TextSymbol",
+  "esri/symbols/SimpleFillSymbol",
+  "esri/symbols/SimpleLineSymbol",
+  "esri/Color",
   "esri/layers/LabelClass",
   "dojo/json",
   "dojo/ready",
@@ -43,11 +48,13 @@ function(
   Polyline,
   Point,
   GraphicsLayer,
+  FeatureLayer,
   Locator,
   GeometryService,
   geometryEngine,
   ProjectParameters,
   BufferParameters,
+  QueryTask,
   Query,
   Graphic,
   SpatialReference,
@@ -59,6 +66,9 @@ function(
   webMercatorUtils,
   PictureMarkerSymbol,
   TextSymbol,
+  SimpleFillSymbol,
+  SimpleLineSymbol,
+  Color,
   LabelClass,
   json,
   ready,
@@ -155,9 +165,9 @@ function(
     fiStatusFields: [], 
     fiHealthStatus: false,
 
-    aov1PopupFields: [],
-    aov2PopupFields: [],
-    aovLinePopupFields: [],
+    aov1PopupFields: '',
+    aov2PopupFields: '',
+    aovLinePopupFields: '',
     ltgPopupFields: [],
 
     lineGeometries: null,
@@ -198,6 +208,7 @@ function(
     startStationLayer: null,
     fiStatusLayer: null,
     aovLayer: null,
+    switchLayer: null,
     //var bufferLayer = new GraphicsLayer();
 
     switchLabel: null,
@@ -206,7 +217,8 @@ function(
 
     txMapLayers: null,
 
-    aovPopupTemplate: null,
+    aov1PopupTemplate: null,
+    aov2PopupTemplate: null,
     aovLinePopupTemplate: null,
     ltgPopupTemplate: null,
     fiInfoTemplate: null,
@@ -273,7 +285,7 @@ function(
       this.faultLocID = parseInt(this.config.faultLocID);
       this.stationLayerID = this.config.stationLayerID;
       this.lineLayerID = this.config.lineLayerID;
-      this.structureLayerID = parseInt(this.config.structureLayerID);
+      this.structureLayerID = this.config.structureLayerID;
       this.switchLayerID = this.config.switchLayerID;
       this.switchKeys = this.config.switchKeys;
       this.switchEnabled = this.config.switchEnabled;
@@ -330,16 +342,16 @@ function(
       //Setup AOV Legend table
       // n color values corresponds to n-1 breakpoints
       this.aovColors = [
-          [165,0,38,1],
-          [215,48,39,1],
-          [244,109,67,1],
-          [253,174,97,1],
-          [254,224,139,1],
-          [217,239,139,1],
-          [166,217,106,1],
-          [102,189,99,1],
-          [26,152,80,1],
-          [0,104,55,1]
+          [165,0,38,255],
+          [215,48,39,255],
+          [244,109,67,255],
+          [253,174,97,255],
+          [254,224,139,255],
+          [217,239,139,255],
+          [166,217,106,255],
+          [102,189,99,255],
+          [26,152,80,255],
+          [0,104,55,255]
         ];
 
       this.aovBreakpoints = [
@@ -391,18 +403,9 @@ function(
       this.aovReferenceBusSymbol = {
         type: "simple-marker",
         style: "x",
-        outline: { width: 1.25, color: [255, 0, 0, 1] },
+        outline: { width: 1.25, color: [255, 0, 0, 255] },
         size: 8,
       };
-
-      //set up map services / layers
-      this.gsvc = new GeometryService({ url: this.gsvcURL });
-      this.ltgLayer = new GraphicsLayer();
-      this.faultsLayer = new GraphicsLayer();
-      this.startStationLayer = new GraphicsLayer();
-      this.fiStatusLayer = new GraphicsLayer();
-      this.aovLayer = new GraphicsLayer();
-      //var bufferLayer = new GraphicsLayer();
 
       this.switchLabel = JSON.parse(this.config.switchLabel);
       this.structureLabel = JSON.parse(this.config.structureLabel);
@@ -414,24 +417,19 @@ function(
         content: this.distanceToStation,
       };
 
-      this.aovPopupTemplate = {
+      this.aov1PopupTemplate = {
         title: this.aovPopuptitle,
-        content: [
-          {
-            type: "fields",
-            fieldInfos: null,
-          },
-        ],
+        content: this.aov1PopupFields
+      };
+
+      this.aov2PopupTemplate = {
+        title: this.aovPopuptitle,
+        content: this.aov2PopupFields
       };
 
       this.aovLinePopupTemplate = {
         title: this.aovLinePopuptitle,
-        content: [
-          {
-            type: "fields",
-            fieldInfos: this.aovLinePopupFields
-          }
-        ]
+        content: this.aovLinePopupFields
       };
 
       this.ltgPopupTemplate = {
@@ -490,6 +488,14 @@ function(
     // }
 
     //OpenFTT Code
+    getWidth: function(xmin, xmax) {
+      return Math.abs(Math.abs(xmax) - Math.abs(xmin));
+    },
+
+    getHeight: function(ymin, ymax) {
+      return Math.abs(Math.abs(ymax) - Math.abs(ymin));
+    },
+
     getCookie: function(cname) {
       let name = cname + "=";
       let ca = document.cookie.split(";");
@@ -658,26 +664,27 @@ function(
       let numValue = parseFloat(value);
 
       //0 case
-      if (0 <= numValue < aovBreakpoints[0]) {
-        return aovColors[0];
+      if (0 <= numValue < this.aovBreakpoints[0]) {
+        return this.aovColors[0];
       };
 
       //1 to (n-1)
-      for(i = 0; i < aovBreakpoints.length; i++) {
-          if (aovBreakpoints[i] <= numValue < aovBreakpoints[i + 1]) {
-            return aovColors[i + 1];    
+      for(i = 0; i < this.aovBreakpoints.length; i++) {
+          if (this.aovBreakpoints[i] <= numValue < this.aovBreakpoints[i + 1]) {
+            return this.aovColors[i + 1];    
           };
       };
 
       //n case
-      return aovColors[aovColors.length - 1];
+      return this.aovColors[this.aovColors.length - 1];
     },
 
     aovLineSymbol: function(value) {
-      var colorVal = aovColorVal(value);
+      var colorVal = this.aovColorVal(value);
 
       var symbol = {
-        type: "simple-line",
+        type: "esriSLS",
+        style: "esriSLSSolid",
         color: colorVal,
         width: 2
       };
@@ -686,16 +693,19 @@ function(
     },
 
     aovStatusSymbol: function(value) {
-      var colorVal = aovColorVal(value);
+      var colorVal = this.aovColorVal(value);
       
       var symbol = {
-        type: "simple-marker",
-        style: "circle",
-        outline: { width: 1.5, color: [0, 0, 0, 1] },
+        type: "esriSMS",
+        style: "esriSMSCircle",
+        outline: { width: 1, color: [0, 0, 0, 255], type: "esriSLS", style:"esriSLSSolid" },
         color: colorVal,
         size: 8,
+        angle: 0,
+        xoffset: 0,
+        yoffset: 0,
       };
-      
+
       return symbol;
     },
 
@@ -1006,10 +1016,10 @@ function(
     },
 
     setSwitchDefinitionExpression: function(lineID) {
-      if(switchEnabled){
-        switchLayer.definitionExpression = switchKeys.map((key) => `${key.name} = '${lineID}'`).join(' OR ');
-        if (!switchLayer.visible) {
-          switchLayer.visible = true;
+      if(this.switchEnabled){
+        this.switchLayer.definitionExpression = this.switchKeys.map((key) => `${key.name} = '${lineID}'`).join(' OR ');
+        if (!this.switchLayer.visible) {
+          this.switchLayer.visible = true;
         }
       }
     },
@@ -1192,7 +1202,7 @@ function(
     },
 
     getFaultIndicators: function(lineID) {
-      if (fiEnabled) {
+      if (this.fiEnabled) {
         fiPoints = [];
         fiStatusLayer.removeAll();
 
@@ -1202,8 +1212,8 @@ function(
     },
 
     getSwitches: function(lineID) {
-      if (switchEnabled) {
-        setSwitchDefinitionExpression(lineID);
+      if (this.switchEnabled) {
+        this.setSwitchDefinitionExpression(lineID);
       }
     },
 
@@ -1303,7 +1313,7 @@ function(
       lineSelect.addEventListener("change", function () {
         var lineID = event.target.value;
         //reset
-        resetEnvironment(true);
+        this.resetEnvironment(true);
         //make sure we aren't on Please select...
         if (lineID.length > 0) {
           //highlight line
@@ -1606,44 +1616,44 @@ function(
     populateLineDropDown: function(showLoader = false) {
       let self = this;
       this.lineLayer.definitionExpression = "1=1";
-      this.lineLayer.createFeatureLayer().then(function (lineFeatureLayer){
-        var query = lineFeatureLayer.createQuery();
-        query.orderByFields = lineSortFields;
-        query.outFields = lineOutFields;
-        query.returnGeometry=false;
-        query.returnDistinctValues=true;
+      
+      var queryTask = new QueryTask(this.lineLayer.url);
+      var query = new Query();
+      query.orderByFields = this.lineSortFields;
+      query.outFields = this.lineOutFields;
+      query.returnGeometry=false;
+      query.returnDistinctValues=true;
 
-        lineFeatureLayer
-          .queryFeatureCount()
-          .then(function (numFeatures) {
-            if (showLoader) {
-              self.loader.show();
-            }
-            var numPages = Math.ceil(numFeatures / self.maxRecordCount);
-            var resultPages = [];
-            for (var i = 0; i < numPages; i++) {
-              resultPages.push(i * self.maxRecordCount);
-            }
-            return Promise.all(
-              resultPages.map(function (resultPageStart) {
-                query.start = resultPageStart;
-                query.num = self.maxRecordCount - 1;
-                return lineFeatureLayer.queryFeatures(query);
-              })
-            );
-          })
-          .then(function (featureSets) {
-            var features = [];
-            featureSets.forEach(function (featureSet) {
-              features = features.concat(featureSet.features);
-            });
-            return features;
-          })
-          .then(self.getLineValues)
-          .then(self.getUniqueValues2)
-          .then(self.addToLineSelect)
-          .then(self.selectLine);
-      });
+      this.lineLayer
+        .queryFeatureCount()
+        .then(function (numFeatures) {
+          if (showLoader) {
+            self.loader.show();
+          }
+          var numPages = Math.ceil(numFeatures / self.maxRecordCount);
+          var resultPages = [];
+          for (var i = 0; i < numPages; i++) {
+            resultPages.push(i * self.maxRecordCount);
+          }
+          return Promise.all(
+            resultPages.map(function (resultPageStart) {
+              query.start = resultPageStart;
+              query.num = self.maxRecordCount - 1;
+              return lineFeatureLayer.queryFeatures(query);
+            })
+          );
+        })
+        .then(function (featureSets) {
+          var features = [];
+          featureSets.forEach(function (featureSet) {
+            features = features.concat(featureSet.features);
+          });
+          return features;
+        })
+        .then(self.getLineValues)
+        .then(self.getUniqueValues2)
+        .then(self.addToLineSelect)
+        .then(self.selectLine);
     },
 
     getLineValues: function(features) {
@@ -1905,11 +1915,11 @@ function(
     resetEnvironment: function(full) {
       //if full reset do everything
       //if not full reset just clear faults / start stations / lightning
-      ltgLayer.removeAll();
-      faultsLayer.removeAll();
-      startStationLayer.removeAll();
-      fiStatusLayer.removeAll();
-      aovLayer.removeAll();
+      this.ltgLayer.clear();
+      this.faultsLayer.clear();
+      this.startStationLayer.clear();
+      this.fiStatusLayer.clear();
+      this.aovLayer.clear();
 
       faultLocID = 0;
       lastIndex = 0;
@@ -1945,34 +1955,34 @@ function(
       getInfoDivMinHeight();
 
       //clear scada mapping
-      fiSCADANames.length = 0;
+      this.fiSCADANames.length = 0;
 
       //complete reset
       if (full) {
-        lineLayer.visible = false;
-        stationLayer.visible = false;
-        structureLayer.visible = false;
+        this.lineLayer.visible = false;
+        this.stationLayer.visible = false;
+        this.structureLayer.visible = false;
 
-        stationLayer.definitionExpression = "1=1";
-        var sg = queryForStationGeometries();
-        structureLayer.definitionExpression = "1=1";
-        var tg = queryForStructureGeometries();
+        this.stationLayer.definitionExpression = "1=1";
+        var sg = this.queryForStationGeometries();
+        this.structureLayer.definitionExpression = "1=1";
+        var tg = this.queryForStructureGeometries();
 
-        if(fiEnabled){
-          fiLayer.visible = false;
-          fiLayer.definitionExpression = "1=1";  
+        if(this.fiEnabled){
+          this.fiLayer.visible = false;
+          this.fiLayer.definitionExpression = "1=1";  
         }
 
         //reset form
-        stationSelect.options.length = 0;
+        this.stationSelect.options.length = 0;
         document.getElementById("faultDistance").value = "";
 
         //reset globals
-        lineGeometries = null;
-        stationGeometries = null;
-        structureGeometries = null;
-        stationList.length = 0;
-        selectedStationName = "";
+        this.lineGeometries = null;
+        this.stationGeometries = null;
+        this.structureGeometries = null;
+        this.stationList.length = 0;
+        this.selectedStationName = "";
       }
     },
 
@@ -2400,11 +2410,11 @@ function(
       var pt;
       if(Math.abs(lon) <= 180 ) {
           //we're using wgs84 coords
-          pt = new Point ({longitude:lon, latitude: lat});
+          pt = new Point(lon, lat, 4326);
       } else {
           //we need to project
           var wgs84coords=webMercatorUtils.xyToLngLat(lon,lat);
-          pt = new Point({longitude:wgs84coords[0], latitude: wgs84coords[1]});
+          pt = new Point(wgs84coords[0], wgs84coords[1], 4326);
       }
       return pt;
     },
@@ -2490,16 +2500,6 @@ function(
     plotAoVOnMap: function(csvData) {
       let zoomPoint;
       try {
-
-        //Sort our data by bus1name
-        //csvData.sort(function(first, second){
-        //  if (first.Bus1Name < second.Bus1Name)
-        //    return -1;
-        //  if (first.Bus1Name > second.Bus1Name)
-        //    return 1;
-        //  return 0;
-        //});
-
         //Replace empty voltages with 1
         csvData.forEach(x => {
           if (x.Bus1Val == '')
@@ -2537,15 +2537,14 @@ function(
 
           //Plot the reference bus
           if (aovAttributes["Bus1Name"].toLowerCase().includes("reference")) {
-            var referencePoint = getPoint(aovAttributes["Bus1X"], aovAttributes["Bus1Y"]);
-            aovPopupTemplate.content[0].fieldInfos = aov1PopupFields;
+            var referencePoint = this.getPoint(aovAttributes["Bus1X"], aovAttributes["Bus1Y"]);
+            this.aovPopupTemplate.content[0].fieldInfos = this.aov1PopupFields;
             var referenceBus = new Graphic({
               geometry: referencePoint,
-              symbol: aovReferenceBusSymbol,
-              attributes: aovAttributes,
-              popupTemplate: aovPopupTemplate,
+              attributes: this.aovAttributes,
+              popupTemplate: this.aov1PopupTemplate,
             });
-            aovLayer.add(referenceBus);
+            this.aovLayer.add(referenceBus);
             pointsPlotted.push(referenceBus);
           }
 
@@ -2553,12 +2552,12 @@ function(
           if (isNaN(aovAttributes["Bus1X"]) || isNaN(aovAttributes["Bus1Y"]) || isNaN(aovAttributes["Bus2X"]) || isNaN(aovAttributes["Bus2Y"]))
             continue;
           
-          var aovpoint1 = getPoint(aovAttributes["Bus1X"], aovAttributes["Bus1Y"]);
-          var aovpoint2 = getPoint(aovAttributes["Bus2X"], aovAttributes["Bus2Y"]);
+          var aovpoint1 = this.getPoint(aovAttributes["Bus1X"], aovAttributes["Bus1Y"]);
+          var aovpoint2 = this.getPoint(aovAttributes["Bus2X"], aovAttributes["Bus2Y"]);
           zoomPoint = aovpoint1;
     
-          aovPopupTemplate.content[0].fieldInfos = aov1PopupFields;
-          var aovSymbol1 = aovStatusSymbol(aovAttributes["Bus1Val"]);
+          //this.aovPopupTemplate.content[0].fieldInfos = this.aov1PopupFields;
+          var aovSymbol1 = this.aovStatusSymbol(aovAttributes["Bus1Val"]);
 
           //Cache line name for plotting the line
           var lineNameCache = aovAttributes["LineName"];
@@ -2569,35 +2568,27 @@ function(
           var lines = [...lines1, ...lines2];
           aovAttributes.LineName = lines.join('<br/>');
           var aov1 = new Graphic({
-            geometry: aovpoint1,
-            symbol: aovSymbol1,
+            geometry: {x: aovAttributes["Bus1X"], y: aovAttributes["Bus1Y"]},
             attributes: aovAttributes,
-            popupTemplate: aovPopupTemplate,
+            symbol: aovSymbol1,
+            infoTemplate: this.aov1PopupTemplate,
           });
           
-          aovPopupTemplate.content[0].fieldInfos = aov2PopupFields;
-          var aovSymbol2 = aovStatusSymbol(aovAttributes["Bus2Val"]);
-          //lines1 = [];
-          //lines2 = [];
-          //lines = [];
-          //Get all lines for aovSymbol2
-          //lines1 = csvData.filter(lineItem => lineItem.Bus1Name === aovAttributes.Bus2Name).map(lineItem => lineItem.LineName);
-          //lines2 = csvData.filter(lineItem => lineItem.Bus2Name === aovAttributes.Bus2Name).map(lineItem => lineItem.LineName);
-          //lines = [...lines1, ...lines2];
-          //aovAttributes.LineName = lines.join(',');
+          //this.aovPopupTemplate.content[0].fieldInfos = this.aov2PopupFields;
+          var aovSymbol2 = this.aovStatusSymbol(aovAttributes["Bus2Val"]);
+
           var aov2 = new Graphic({
-            geometry: aovpoint2,
-            symbol: aovSymbol2,
+            geometry: {x: aovAttributes["Bus2X"], y: aovAttributes["Bus2Y"]},
             attributes: aovAttributes,
-            popupTemplate: aovPopupTemplate,
+            symbol: aovSymbol2,
+            infoTemplate: this.aov2PopupTemplate,
           });
           
           const polyLine = {
-            type: "polyline",
-            paths: [
-              [aovpoint1.longitude, aovpoint1.latitude],
-              [aovpoint2.longitude, aovpoint2.latitude],
-            ]
+            paths: [[
+              [aovAttributes["Bus1X"], aovAttributes["Bus1Y"]],
+              [aovAttributes["Bus2X"], aovAttributes["Bus2Y"]],
+            ]]
           };
     
           var aovLineAttributes = {
@@ -2605,34 +2596,40 @@ function(
             "Value": Math.min(aovAttributes["Bus1Val"], aovAttributes["Bus2Val"])
           };
           
-          var aovLineStatus = aovLineSymbol(aovLineAttributes.Value);
+          var aovLineStatus = this.aovLineSymbol(aovLineAttributes.Value);
           
           var aovLine = new Graphic({
             geometry: polyLine,
             symbol: aovLineStatus,
             attributes: aovLineAttributes,
-            popupTemplate: aovLinePopupTemplate,
+            infoTemplate: this.aovLinePopupTemplate,
           });
-
+          
           //Look up bus node in unique name aray.  Plot if in array, then remove from array
           var uniqueNameIndex = uniqueNameArray.indexOf(aov1.attributes.Bus1Name);
           if (uniqueNameIndex > -1) {
-            aovLayer.add(aov1);
+            this.aovLayer.add(aov1);
             uniqueNameArray.splice(uniqueNameIndex, 1);
           }
           uniqueNameIndex = uniqueNameArray.indexOf(aov2.attributes.Bus2Name);
           if (uniqueNameIndex > -1) {
-            aovLayer.add(aov2);
+            this.aovLayer.add(aov2);
             uniqueNameArray.splice(uniqueNameIndex, 1);
           }
         
-          aovLayer.add(aovLine);
+          this.aovLayer.add(aovLine);
         }
       } catch (error) {
         alert(error);
       } finally {
-        zoomTo(zoomPoint);
-        view.zoom = 14;
+        var spReference = new SpatialReference("4326");
+        this.aovLayer.spatialReference = spReference; 
+        this.aovLayer.initialExtent = this.initialExtent;
+        this.aovLayer.initialExtent.getWidth = this.getWidth;
+        this.aovLayer.initialExtent.getHeight = this.getHeight;
+        this.map.removeLayer(this.aovLayer);
+        this.map.addLayer(this.aovLayer);
+        this.aovLayer.show();
       }
     },
 
@@ -3350,7 +3347,7 @@ function(
         var reader = new FileReader();
         reader.onload = (event) => {
           var csvData = $.csv.toObjects(event.target.result);
-          this.aovLayer.removeAll();
+          this.aovLayer.clear();
           this.plotAoVOnMap(csvData);
         }
         reader.onerror = (err) => {
@@ -3359,42 +3356,53 @@ function(
         event.target.files.length > 0 && reader.readAsText(event.target.files[0]);
       });
 
-      
-      this.txMapLayers = new MapImageLayer({
-        url: this.mapServerURL,
-        sublayers: [
-          {
-            id: this.stationLayerID,
-            renderer: this.stationRender,
-            visible: false,
-          },
-          {
-            id: this.lineLayerID,
-            renderer: this.lineRender,
-            visible: false,
-          },
-          {
-            id: this.structureLayerID,
-            renderer: this.structureRender,
-            visible: false,
-          }
-        ],
+      this.lineLayer = new FeatureLayer(this.mapServerURL, {
+        id: this.lineLayerID,
+        renderer: this.lineRender,
+        visible: false,
       });
+      this.map.addLayer(this.lineLayer);
+
+      this.stationLayer = new FeatureLayer(this.mapServerURL, {
+        id: this.stationLayerID,
+        renderer: this.stationRender,
+        visible: false,
+      });
+      this.map.addLayer(this.stationLayer);
+
+      this.structureLayer = new FeatureLayer(this.mapServerURL, {
+        id: this.structureLayerID,
+        renderer: this.structureRender,
+        visible: false,
+      });
+      this.map.addLayer(this.structureLayer);
 
       if(this.fiEnabled){
-        var fiSubLayer = new ArcGISDynamicMapServiceLayer(this.mapServerURL, {id: this.fiLayerID, renderer: this.fiSymbol, visible: false});
+        var fiSubLayer = new FeatureLayer(this.mapServerURL, {id: this.fiLayerID, renderer: this.fiSymbol, visible: false});
         this.map.addLayer(fiSubLayer);
       }
 
-      var switchLayer;
       if(this.switchEnabled){
-        var switchSubLayer = new ArcGISDynamicMapServiceLayer(this.mapServerURL, {id: this.switchLayerID, renderer: this.switchRender, visible: false});
-        this.map.addLayer(switchSubLayer);
-        switchLayer = this.map.getLayer(this.switchLayerID);
+        this.switchLayer = new FeatureLayer(this.mapServerURL, {id: this.switchLayerID, renderer: this.switchRender, visible: false});
+        this.map.addLayer(this.switchLayer);
+        this.switchLayer = this.map.getLayer(this.switchLayerID);
         if(this.useSwitchLabel) {
-          switchLayer.labelingInfo = [this.switchLabel];
+          this.switchLayer.labelingInfo = [this.switchLabel];
         }
       }
+
+      //set up map services / layers
+      this.gsvc = new GeometryService({ url: this.gsvcURL });
+      this.ltgLayer = new GraphicsLayer();
+      this.map.addLayer(this.ltgLayer);
+      this.faultsLayer = new GraphicsLayer();
+      this.map.addLayer(this.faultsLayer);
+      this.startStationLayer = new GraphicsLayer();
+      this.map.addLayer(this.startStationLayer);
+      this.fiStatusLayer = new GraphicsLayer();
+      this.map.addLayer(this.fiStatusLayer);
+      this.aovLayer = new GraphicsLayer();
+      this.map.addLayer(this.aovLayer);
 
       this.fiStatusTemplate = {
         title: this.fiInfotitle,
@@ -3438,35 +3446,19 @@ function(
       headerCell.innerHTML = "Distance";
       row.appendChild(headerCell);
 
-      //create Map
-      //var map = new Map({
-      //  basemap: "gray",
-      //  highlightOptions: {
-      //    color: [56, 168, 0, 1],
-      //  },
-      //  layers: [
-      //    txMapLayers,
-      //    ltgLayer,
-      //    faultsLayer,
-      //    startStationLayer,
-      //    fiStatusLayer,
-      //    aovLayer,
-      //  ],
-      //});
-
       this.btnClearFaults = document.getElementById("clear-faults");
       this.btnClearFaults.addEventListener("click", function () {
-        this.resetEnvironment(false);
+        self.resetEnvironment(false);
       });
 
       this.btnClearLightning = document.getElementById("clear-lightning");
       this.btnClearLightning.addEventListener("click", function () {
-        this.resetEnvironment(false);
+        self.resetEnvironment(false);
       });
 
       this.checkAutozoom = document.getElementById("autozoom");
       this.checkAutozoom.addEventListener("click", function() {
-        this.setCookie("autozoomtofault", this.checkAutozoom.checked, 365);
+        self.setCookie("autozoomtofault", this.checkAutozoom.checked, 365);
       });
 
       this.lineSelect = document.getElementById("lineSelect");
@@ -3475,10 +3467,16 @@ function(
       this.btnLocateFault = document.getElementById("locate-faults");
       this.btnLocateLightning = document.getElementById("locate-lightning");
  
-      this.view = new Map("viewDiv", {
+      this.initialExtent.getWidth = this.getWidth;
+      this.initialExtent.getHeight = this.getHeight;
+      this.view = new Map(this.map.container, {
         map: this.map,
-        extent: this.initialExtent
+        extent: this.initialExtent,
+        spatialReference: new SpatialReference(4326),
       });
+      this.view.getWidth = this.getWidth;
+      this.view.getHeight = this.getHeight;
+
 
       ready(function () {
         //if commandline is null use normal work flow, else autopopulate form with CLI value
@@ -3491,7 +3489,7 @@ function(
           if (totalLine == null) {
             totalLine = 1;
           } else {
-            totalLine = parseInt(totalLine);
+            totalLine = self.parseInt(totalLine);
           }
 
           var paramsToProcess = [];
@@ -3530,7 +3528,7 @@ function(
               allParms += 100;
               defaultLineId = bookmark.lineID;
             } else {
-              self.populateLineDropDown();
+              //self.populateLineDropDown();
             }
 
             if (bookmark.stationName != "") {
@@ -3540,7 +3538,7 @@ function(
 
             if (bookmark.distance != "") {
               allParms += 1;
-              var distance = parseFloat(bookmark.distance).toFixed(3);
+              var distance = self.parseFloat(bookmark.distance).toFixed(3);
               document.getElementById("faultDistance").value = distance;
             }
             return allParms;
@@ -3563,17 +3561,17 @@ function(
           }
 
           setBookmarkFields(paramsToProcess[0]);
-          self.populateLineDropDown(true);
+          //self.populateLineDropDown(true);
 
-          var zoomToFault = getUrlParameter("zoomToFault");
+          var zoomToFault = self.getUrlParameter("zoomToFault");
           if (zoomToFault.toUpperCase() == "N") {
             document.getElementById("autozoom").checked = false;
           }
           //get fault indicators
-          self.getFaultIndicators(defaultLineId);
+          self.getFaultIndicators(self.defaultLineId);
 
           //get switches
-          self.getSwitches(defaultLineId);
+          self.getSwitches(self.defaultLineId);
         } else {
           //populate event time with default value
           self.populateEvtTime();
@@ -3670,7 +3668,7 @@ function(
 
       $("#togglePrintView").click(function () {
         $(".esri-print").toggle();
-        getInfoDivMinHeight();
+        self.getInfoDivMinHeight();
       });
 
       console.log('OpenFTT::startup::Finish');
