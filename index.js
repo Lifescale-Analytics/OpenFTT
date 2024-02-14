@@ -112,8 +112,11 @@ function getInfoDivMinHeight(){
       openBlock=1;
       switch(i){
         case 0:
+		  //faults
+		  minHeight=176;
+		  break;
         case 2:
-          //faults, lightning
+          //lightning
           minHeight=156;
           break;
         case 3:
@@ -1561,11 +1564,14 @@ require([
         var stationName = getUrlParameter(`stationname_${i}`);
         //populate distance
         var distance = getUrlParameter(`distance_${i}`);
+		    //end coordinates
+		    var endCoordinate = getUrlParameter(`endcoordinate_${i}`);
         paramsToProcess.push({
           lineID: lineId,
           stationName: stationName,
           evntTime: eventTime,
           distance: distance,
+		      endCoordinate: endCoordinate?.split(','),
         });
       }
 
@@ -1601,6 +1607,12 @@ require([
           var distance = parseFloat(bookmark.distance).toFixed(3);
           document.getElementById("faultDistance").value = distance;
         }
+
+        if (bookmark.endCoordinate != ""){
+          document.getElementById("fltLat").value = bookmark.endCoordinate[0];
+          document.getElementById("fltLng").value = bookmark.endCoordinate[1];
+        }
+			
         return allParms;
       };
 
@@ -2308,10 +2320,16 @@ require([
           lineID = lineSelect.value;
           getFaultIndicators(lineID);
           queryForFIStatus();
-
+          var endCoordinate = [];
+          endCoordinate.push(parseFloat(document.getElementById("fltLat").value));
+          endCoordinate.push(parseFloat(document.getElementById("fltLng").value));
+          if (isNaN(endCoordinate[0])) {
+            endCoordinate = null;
+          }
+			
           //all form values are valid, go get fault!
 
-          getFaultLocations(distance);
+          getFaultLocations(distance, endCoordinate);
         }
       }
     } else if (distance < 0) {
@@ -2394,6 +2412,7 @@ require([
       evntTime:
         evttimeval.clone().tz("GMT").format("YYYY-MM-DDTHH:mm:ss.SSS") + "Z",
       distance: document.getElementById("faultDistance").value,
+	    endCoordinate: `${document.getElementById("fltLat").value},${document.getElementById("fltLng").value}`,
     });
 
     var params = {};
@@ -2402,6 +2421,7 @@ require([
       params[`stationname_${i}`] = bookmarkParams[i].stationName;
       params[`eventtime_${i}`] = bookmarkParams[i].evntTime;
       params[`distance_${i}`] = bookmarkParams[i].distance;
+	    if (bookmarkParams[i].endCoordinate != ",") params[`endcoordinate_${i}`] = bookmarkParams[i].endCoordinate;
     }
 
     params["zoomToFault"] = autozoom.checked ? "y" : "n";
@@ -2418,9 +2438,14 @@ require([
       searchParams.toString();
   }
 
-  function getFaultLocations(distance) {
+  function getFaultLocations(distance, endCoordinate = null) {
     //get endpoints for all the lines/paths
     var segmentEndpoints = getSegmentEndPoints(lineGeometries);
+    if (endCoordinate !== null) {
+      var endSegment = segmentEndpoints.filter((point) => {
+        return point.endPt[0].toString() == endCoordinate[0].toString() && point.endPt[1].toString() == endCoordinate[1].toString();
+      });
+    }
     //get start point on line - nearest to substation
     var startPos = getStartPosition(startStationGeometries, segmentEndpoints);
     //build network topology from start station
@@ -2432,9 +2457,17 @@ require([
     var paths = [];
     //multiple segment line, get neighbors, else specify current line as path.
     if (neighbors.length > 1) {
-      getPaths(neighbors, paths, curPath, startPos.id.toString());
+      getPaths(neighbors, paths, curPath, startPos.id.toString(), endCoordinate ? endSegment[0].id.toString() : null);
     } else {
       paths.push(startPos.id.toString());
+    }
+    //get rid of paths that don't end at our coordinate
+    if (endCoordinate !== null) {
+      if (paths.length > 1) {
+        paths = paths.filter(subArray => {
+          return (subArray[subArray.length -1] === endSegment[0].id.toString());
+        });
+      }
     }
     //find position(s)  & plot fault(s) on map
     var faultCoords = [];
@@ -2640,7 +2673,7 @@ require([
     //return id;
   }
 
-  function getPaths(neighbors, paths, path, startID) {
+  function getPaths(neighbors, paths, path, startID, endID = null) {
     //get neighbors
     if (startID != null && startID.length > 0) {
       var nbrs = neighbors[startID].neighbors.split(",");
@@ -2653,10 +2686,12 @@ require([
         }
       }
 
+	  //Add this ID to the current path
       path.push(startID);
 
-      //if we are at the end push path to paths list
-      if (nbrs.length < 1) {
+	  //If there is an endpoint and we've reached it stop looking down this path;
+      //or if we are at the end push path to paths list
+      if (nbrs.length < 1 || (endID !== null && startID == endID)) {
         paths.push(path);
         return;
       }
@@ -2664,7 +2699,7 @@ require([
       //visit neighbor nodes
       for (let nbr in nbrs) {
         var myPath = path.slice();
-        getPaths(neighbors, paths, myPath, nbrs[nbr]);
+        getPaths(neighbors, paths, myPath, nbrs[nbr], endID);
       }
     }
     return;
