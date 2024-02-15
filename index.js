@@ -340,9 +340,9 @@ require([
   var useStructureLabel = data.useStructureLabel;
   var useSpanTolerance = data.useSpanTolerance;
   var spanTolerance = parseFloat(data.spanTolerance);
-  var eventsURL = data.eventsURL;
+  var eventsURL = data.eventsURL.replace("serverIP", serverIP);
   var eventsRefreshInterval = parseInt(data.eventsRefreshInterval);
-  var waveformURL = data.waveformURL;
+  var waveformURL = data.waveformURL.replace("serverIP", serverIP);
   
   var structureKeyField = fltStructureFields
     .filter((f) => f.key)
@@ -1422,7 +1422,7 @@ require([
     });
 
     btnLoadEvents.addEventListener("click", async function () {
-      let request = new Request(`${eventsURL}?starttime=${new Date(evtstarttime.value).toISOString()}&endtime=${new Date(evtstoptime.value).toISOString()}`);
+      let request = new Request(`${eventsURL}?startdate=${new Date(evtstarttime.value).toISOString()}&enddate=${new Date(evtstoptime.value).toISOString()}`);
       let response = await fetch(request, {cache: 'no-cache'});  
       let events = await response.json();
       plotEvents(events);
@@ -3597,11 +3597,12 @@ require([
         let line = eventToPlot[1].textContent;
         let substation = eventToPlot[2].textContent;
         let distance = eventToPlot[3].textContent;
+		let lineid = eventToPlot[5].textContent;
         document.getElementById("evttime").value = datetime;
         
         let lineSelect = document.getElementById("lineSelect")
         for (let i = 0; i < lineSelect.options.length; i++) {
-          if (lineSelect.options[i].innerText === line) {
+          if (lineSelect.options[i].value === lineid) {
             //Only execute if we changed lines to avoid a UI reset
             if (previousLineIndex !== i) {
               lineSelect.selectedIndex = i;
@@ -3613,15 +3614,8 @@ require([
           }
         }
         setTimeout(() => {
-          let stationSelect = document.getElementById("stationSelect");
-          for (let i = 0; i < stationSelect.options.length; i++) {
-            if (stationSelect.options[i].innerText === substation) {
-              stationSelect.selectedIndex = i;
-              let stationEvent = new Event('change');
-              stationSelect.dispatchEvent(stationEvent);
-              break;
-            }
-          }
+          defaultStationName=substation;
+		  setStationByName();
           document.getElementById("faultDistance").value = distance;
           setTimeout(() => {
             document.getElementById("locate-faults").click();
@@ -3642,15 +3636,18 @@ require([
         let substation = row.insertCell(2);
         let distance = row.insertCell(3);
         let waveform = row.insertCell(4);
+		let lineid = row.insertCell(5);
         date.innerHTML = events[evt]["event_datetime"];
         line.innerHTML = events[evt]["line"];
         substation.innerHTML = events[evt]["substation"];
         distance.innerHTML = events[evt]["distance_miles"];
+		lineid.innerHTML = events[evt]["lineID"];
+		lineid.style.display="none";
         let waveformButton = document.createElement("button");
         waveformButton.textContent = "Open";
         waveformButton.addEventListener("click", function () {
           document.body.style.curor = "default"
-          window.open(`${waveformURL}?eventid=${events[evt]["eventid"]}`, "_blank")
+          window.open(`${waveformURL}?eventid=${events[evt]["eventID"]}`, "_blank")
         });
         waveform.appendChild(waveformButton);
       }
