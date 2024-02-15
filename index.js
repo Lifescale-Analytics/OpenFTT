@@ -3616,6 +3616,8 @@ require([
         setTimeout(() => {
           defaultStationName=substation;
 		  setStationByName();
+          stationSelectFunc(startStationID);
+          getStartStation(stationGeometries);
           document.getElementById("faultDistance").value = distance;
           setTimeout(() => {
             document.getElementById("locate-faults").click();
