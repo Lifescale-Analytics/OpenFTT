@@ -43,7 +43,8 @@ function updateEventTimes(timespan) {
 function enableAutoEventRefresh() {
   eventIntervalID = setInterval(function() {
       clearEventsTable();
-      updateEventTimes(eventTimeFrame);
+	  let timespan = document.getElementById("eventTimeFrame").value
+      updateEventTimes(timespan);
       document.getElementById("load-events").click();  
     }, parseInt(configValues.eventsRefreshInterval) * 1000); 
 }
