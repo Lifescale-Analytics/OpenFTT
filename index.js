@@ -34,7 +34,7 @@ function clearEventsTable() {
 
 function updateEventTimes(timespan) {
   var evtstoptime = document.getElementById("evtstoptime");
-  evtstoptime.value = moment().format("MM/DD/YYYY HH:mm:ss.SSS");
+  evtstoptime.value = moment().tz(configValues.timezone).format("MM/DD/YYYY HH:mm:ss.SSS");
   
   var evtstarttime = document.getElementById("evtstarttime");
   evtstarttime.value = moment(new Date(evtstoptime.value).toISOString()).subtract(timespan, "hours").format("MM/DD/YYYY HH:mm:ss.SSS");
