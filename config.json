@@ -11,6 +11,7 @@
 	"integratorbboxurl" : "serverIParcgisproxy/proxy.ashx?https://ltg.vaisala.com/realtime/merge/api/v1/ltgs/radius?",
 	"integratorpolyurl" : "serverIParcgisproxy/proxy.ashx?https://ltg.vaisala.com/realtime/merge/api/v1/ltgs/geometry?",
 	"locatorURL": "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer",
+	"confidenceEllipseMultiplier": "2.57",
 	"fiURL": "serverIP/fiapi/default.aspx?",
 	"mapServerURL": "baseURL/OpenFTT/MapServer",
 	"eventsURL": "http://<<events URL and port info>>",

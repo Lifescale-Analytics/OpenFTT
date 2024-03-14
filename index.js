@@ -316,6 +316,7 @@ require([
 	var integratorapiauthurl = data.integratorapiauthurl.replace("serverIP", serverIP);
 	var integratorbboxurl = data.integratorbboxurl.replace("serverIP", serverIP);
   var integratorpolyurl = data.integratorpolyurl.replace("serverIP", serverIP);
+  var confidenceEllipseMultiplier =parseFloat(data.confidenceEllipseMultiplier);
   var mapSpatialReference = parseInt(data.mapSpatialReference);
   var bufferSpatialReference = parseInt(data.bufferSpatialReference);
   var lightningBufferSpatialReference = parseInt(data.lightningBufferSpatialReference);
@@ -3549,8 +3550,8 @@ require([
   const getPointsForEllipse = (lat1, lon1, xaxis, yaxis, rotation) => {
     //axis distance in km
     var rEarth = 9000; //# Earth's average radius in km, actual is closer to 6378.137
-    var rXaxis = xaxis / 10 / rEarth; // /1000 converts meters to km
-    var rYaxis = yaxis / 10 / rEarth; //that shall be km distance, just use xaxis/yaxis at line 44, 45 if you want to measure by dms
+    var rXaxis = confidenceEllipseMultiplier * xaxis / 10 / rEarth; // /1000 converts meters to km, scaled for confidence (1 = 50%, 1.82=90%, 2.57=99%)
+    var rYaxis = confidenceEllipseMultiplier * yaxis / 10 / rEarth; //that shall be km distance, just use xaxis/yaxis at line 44, 45 if you want to measure by dms
 
     var rRotation = rotation;
     var polygonRings = [];
