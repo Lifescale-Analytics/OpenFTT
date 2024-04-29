@@ -6,7 +6,7 @@
       <meta http-equiv="Pragma" content="no-cache" />
       <meta http-equiv="Expires" content="-1" />
       <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no" />
-      <title>Open Fault Trace Tool: API 3.20</title>
+      <title>Open Fault Trace Tool: API 3.32</title>
       <link rel="stylesheet" href="style.css">
       <link rel="icon" type="image/x-icon" href="./favicon.ico">
       <link rel="stylesheet" href="https://js.arcgis.com/4.14/esri/themes/light/main.css">
@@ -61,11 +61,9 @@
                   <td nowrap>From Station:</td>
                   <td><select id="stationSelect" class="esri-widget"></select></td>
                </tr>
-               <tr>
-                  <td>End Lat:</td>
-                  <td><input id="fltLat" type="text" size="20">&nbsp;&nbsp;End Long:&nbsp;<input id="fltLng" type="text"
-                     size="20"></td>
-               </tr>
+				<input id="fltLat" type="hidden" size="20">
+				<input id="fltLng" type="hidden" size="20">
+              
                <tr valign="top">
                   <td nowrap>Distance (mi):</td>
                   <td><input id="faultDistance" type="text" size="4"><input id="autozoom" type="checkbox"
@@ -218,6 +216,7 @@
                         <th align="left">Substation</th>
                         <th align="left">Distance</th>
                         <th align="left">Waveform</th>
+						<th style="display:none">LineID</th>
                      </tr>
                   </thead>
                   <tbody id="tblevt"></tbody>

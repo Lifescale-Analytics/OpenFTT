@@ -43,7 +43,7 @@ function updateEventTimes(timespan) {
 function enableAutoEventRefresh() {
   eventIntervalID = setInterval(function() {
       clearEventsTable();
-	  let timespan = document.getElementById("eventTimeFrame").value
+	    let timespan = document.getElementById("eventTimeFrame").value
       updateEventTimes(timespan);
       document.getElementById("load-events").click();  
     }, parseInt(configValues.eventsRefreshInterval) * 1000); 
@@ -316,6 +316,7 @@ require([
 	var integratorapiauthurl = data.integratorapiauthurl.replace("serverIP", serverIP);
 	var integratorbboxurl = data.integratorbboxurl.replace("serverIP", serverIP);
   var integratorpolyurl = data.integratorpolyurl.replace("serverIP", serverIP);
+  var confidenceEllipseMultiplier =parseFloat(data.confidenceEllipseMultiplier);
   var mapSpatialReference = parseInt(data.mapSpatialReference);
   var bufferSpatialReference = parseInt(data.bufferSpatialReference);
   var lightningBufferSpatialReference = parseInt(data.lightningBufferSpatialReference);
@@ -341,9 +342,9 @@ require([
   var useStructureLabel = data.useStructureLabel;
   var useSpanTolerance = data.useSpanTolerance;
   var spanTolerance = parseFloat(data.spanTolerance);
-  var eventsURL = data.eventsURL;
+  var eventsURL = data.eventsURL.replace("serverIP", serverIP);
   var eventsRefreshInterval = parseInt(data.eventsRefreshInterval);
-  var waveformURL = data.waveformURL;
+  var waveformURL = data.waveformURL.replace("serverIP", serverIP);
   
   var structureKeyField = fltStructureFields
     .filter((f) => f.key)
@@ -1423,7 +1424,7 @@ require([
     });
 
     btnLoadEvents.addEventListener("click", async function () {
-      let request = new Request(`${eventsURL}?starttime=${new Date(evtstarttime.value).toISOString()}&endtime=${new Date(evtstoptime.value).toISOString()}`);
+      let request = new Request(`${eventsURL}?startdate=${new Date(evtstarttime.value).toISOString()}&enddate=${new Date(evtstoptime.value).toISOString()}`);
       let response = await fetch(request, {cache: 'no-cache'});  
       let events = await response.json();
       plotEvents(events);
@@ -3549,8 +3550,8 @@ require([
   const getPointsForEllipse = (lat1, lon1, xaxis, yaxis, rotation) => {
     //axis distance in km
     var rEarth = 9000; //# Earth's average radius in km, actual is closer to 6378.137
-    var rXaxis = xaxis / 10 / rEarth; // /1000 converts meters to km
-    var rYaxis = yaxis / 10 / rEarth; //that shall be km distance, just use xaxis/yaxis at line 44, 45 if you want to measure by dms
+    var rXaxis = confidenceEllipseMultiplier * xaxis / 10 / rEarth; // /1000 converts meters to km, scaled for confidence (1 = 50%, 1.82=90%, 2.57=99%)
+    var rYaxis = confidenceEllipseMultiplier * yaxis / 10 / rEarth; //that shall be km distance, just use xaxis/yaxis at line 44, 45 if you want to measure by dms
 
     var rRotation = rotation;
     var polygonRings = [];
@@ -3598,11 +3599,12 @@ require([
         let line = eventToPlot[1].textContent;
         let substation = eventToPlot[2].textContent;
         let distance = eventToPlot[3].textContent;
+		let lineid = eventToPlot[5].textContent;
         document.getElementById("evttime").value = datetime;
         
         let lineSelect = document.getElementById("lineSelect")
         for (let i = 0; i < lineSelect.options.length; i++) {
-          if (lineSelect.options[i].innerText === line) {
+          if (lineSelect.options[i].value === lineid) {
             //Only execute if we changed lines to avoid a UI reset
             if (previousLineIndex !== i) {
               lineSelect.selectedIndex = i;
@@ -3614,15 +3616,10 @@ require([
           }
         }
         setTimeout(() => {
-          let stationSelect = document.getElementById("stationSelect");
-          for (let i = 0; i < stationSelect.options.length; i++) {
-            if (stationSelect.options[i].innerText === substation) {
-              stationSelect.selectedIndex = i;
-              let stationEvent = new Event('change');
-              stationSelect.dispatchEvent(stationEvent);
-              break;
-            }
-          }
+          defaultStationName=substation;
+		  setStationByName();
+          stationSelectFunc(startStationID);
+          getStartStation(stationGeometries);
           document.getElementById("faultDistance").value = distance;
           setTimeout(() => {
             document.getElementById("locate-faults").click();
@@ -3643,15 +3640,18 @@ require([
         let substation = row.insertCell(2);
         let distance = row.insertCell(3);
         let waveform = row.insertCell(4);
+		let lineid = row.insertCell(5);
         date.innerHTML = events[evt]["event_datetime"];
         line.innerHTML = events[evt]["line"];
         substation.innerHTML = events[evt]["substation"];
         distance.innerHTML = events[evt]["distance_miles"];
+		lineid.innerHTML = events[evt]["lineID"];
+		lineid.style.display="none";
         let waveformButton = document.createElement("button");
         waveformButton.textContent = "Open";
         waveformButton.addEventListener("click", function () {
           document.body.style.curor = "default"
-          window.open(`${waveformURL}?eventid=${events[evt]["eventid"]}`, "_blank")
+          window.open(`${waveformURL}?eventid=${events[evt]["eventID"]}`, "_blank")
         });
         waveform.appendChild(waveformButton);
       }
