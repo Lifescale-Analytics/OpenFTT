@@ -43,7 +43,7 @@ function updateEventTimes(timespan) {
 function enableAutoEventRefresh() {
   eventIntervalID = setInterval(function() {
       clearEventsTable();
-	    let timespan = document.getElementById("eventTimeFrame").value
+	  let timespan = document.getElementById("eventTimeFrame").value
       updateEventTimes(timespan);
       document.getElementById("load-events").click();  
     }, parseInt(configValues.eventsRefreshInterval) * 1000); 
@@ -253,6 +253,9 @@ require([
   "esri/core/Collection",
   "dojo/json",
   "dojo/text!./config.json",
+  "esri/portal/Portal",
+  "esri/identity/OAuthInfo",
+  "esri/identity/IdentityManager",
 ], function (
   esriConfig,
   Map,
@@ -283,7 +286,10 @@ require([
   LabelClass,
   Collection,
   json,
-  data
+  data,
+  Portal,
+  OAuthInfo,
+  esriId
 ) {
   //configuration
   var serverIP = `${window.location.origin}/`;
@@ -316,7 +322,7 @@ require([
 	var integratorapiauthurl = data.integratorapiauthurl.replace("serverIP", serverIP);
 	var integratorbboxurl = data.integratorbboxurl.replace("serverIP", serverIP);
   var integratorpolyurl = data.integratorpolyurl.replace("serverIP", serverIP);
-  var confidenceEllipseMultiplier =parseFloat(data.confidenceEllipseMultiplier);
+  var confidenceEllipseMultiplier = parseFloat(data.confidenceEllipseMultiplier);
   var mapSpatialReference = parseInt(data.mapSpatialReference);
   var bufferSpatialReference = parseInt(data.bufferSpatialReference);
   var lightningBufferSpatialReference = parseInt(data.lightningBufferSpatialReference);
@@ -345,7 +351,11 @@ require([
   var eventsURL = data.eventsURL.replace("serverIP", serverIP);
   var eventsRefreshInterval = parseInt(data.eventsRefreshInterval);
   var waveformURL = data.waveformURL.replace("serverIP", serverIP);
-  
+  var oauthEnabled = data.oauthEnabled;
+  var portalURL = data.portalURL;
+  var appId = data.appId;
+
+
   var structureKeyField = fltStructureFields
     .filter((f) => f.key)
     .map((f) => f.name)[0];
@@ -397,6 +407,33 @@ require([
   }
 
   //end configuration
+
+  //oauth info
+  var token='';
+
+  if(oauthEnabled){
+    esriConfig.portalUrl = portalURL;
+    const info = new OAuthInfo({
+      portalUrl: portalURL,
+      appId: appId,
+      redirectUri: window.location.href,
+    });
+    esriId.registerOAuthInfos([info]);
+    if (!sessionStorage.getItem("esriJSAPIOAuth")) {
+      esriId
+        .getCredential(info.portalUrl + "/sharing")
+        .then((evt) => {
+          token = evt.token;
+        })
+        .catch((err) => {
+          alert(`err: ${err}`);
+        });
+    }
+    token = JSON.parse(sessionStorage.getItem("esriJSAPIOAuth"))["/"][portalURL];
+  
+  }
+ 
+  //end oauth info
 
   //global variables
   var lineGeometries,
@@ -3230,8 +3267,11 @@ require([
     xhttp.onreadystatechange = function() {
       if (this.readyState == 4 && this.status == 200) {
         if(apiType=="polygon"){
-          processVAPIResponse(this.response, "evttime");
-
+		  if(apiurl.indexOf(".json") > 0) {
+			processVAPIResponse(JSON.parse(this.response), "evttime");
+		  } else {
+			processVAPIResponse(this.response, "evttime");
+		  }
         } else {
           processVAPIResponse(this.response, "ltgevttime");
         }
@@ -3246,10 +3286,15 @@ require([
     if(apiType=="polygon") {
       var qs=makeVAPIpolyQueryString();
       var apiurl = `${integratorpolyurl}${qs}`;
-      xhttp.open("POST",apiurl,true);
-      xhttp.setRequestHeader("Accept", "application/geo+json");
-      xhttp.setRequestHeader("Content-Type", "application/json");
-      xhttp.setRequestHeader("Authorization", "Bearer " + authtoken);
+	  if(apiurl.indexOf(".json") > 0) {
+		//this is a demo
+		xhttp.open("GET",apiurl, true);
+	  } else {
+		xhttp.open("POST",apiurl,true);
+	    xhttp.setRequestHeader("Accept", "application/geo+json");
+		xhttp.setRequestHeader("Content-Type", "application/json");
+		xhttp.setRequestHeader("Authorization", "Bearer " + authtoken);
+	  }
       xhttp.send(JSON.stringify(reqbody));
     } else {
       var qs=makeVAPIpointQueryString();

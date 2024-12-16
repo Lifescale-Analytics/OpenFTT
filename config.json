@@ -1,37 +1,42 @@
 {
-	"servername": "http://<<arcgis server and port info>>",
+	"servername": "https://services8.arcgis.com/Wll82WGaQzwrCbqJ/",
 	"useProxy": true,
 	"proxyURL": "serverIParcgisproxy/proxy.ashx",
 	"baseURL": "servername/arcgis/rest/services",
-	"gsvcURL": "baseURL/Utilities/Geometry/GeometryServer",
+	"gsvcURL": "https://utility.arcgisonline.com/arcgis/rest/services/Geometry/GeometryServer",
 	"txdurl1": "serverIParcgisproxy/proxy.ashx?https://txd.vaisala.com/txd100/xml",
 	"txdurl": "serverIPOpenFTT/demo.xml",
-	"integratorenabled" : true,
-	"integratorapiauthurl" : "serverIParcgisproxy/proxy.ashx?https://ltg-auth.vaisala.com/api/v1/auth/token?application=ltg-api&username=<<USERNAME>>&password=<<PASSWORD>>",
+	"integratorenabled" : "true",
+	"integratorapiauthurl" : "serverIParcgisproxy/proxy.ashx?https://ltg-auth.vaisala.com/api/v1/auth/token?application=ltg-api&username=GeoTrans&password=Va!s@2023JAN0221",
 	"integratorbboxurl" : "serverIParcgisproxy/proxy.ashx?https://ltg.vaisala.com/realtime/merge/api/v1/ltgs/radius?",
-	"integratorpolyurl" : "serverIParcgisproxy/proxy.ashx?https://ltg.vaisala.com/realtime/merge/api/v1/ltgs/geometry?",
-	"locatorURL": "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer",
+	"integratorpolyurl" : "serverIParcgisproxy/proxy.ashx?https://ltg.viasala.com/realtime/merge/api/v1/ltgs/geometry?",
+	"integratorpolyurl" : "serverIPFTT/lightning.json?",
 	"confidenceEllipseMultiplier": "2.57",
+	"locatorURL": "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer",
 	"fiURL": "serverIP/fiapi/default.aspx?",
-	"mapServerURL": "baseURL/OpenFTT/MapServer",
+	"mapServerURL": "baseURL/OpenFTT_WGS84/FeatureServer",
 	"eventsURL": "http://<<events URL and port info>>",
 	"eventsRefreshInterval": "60",
 	"enableEventsTab": "true",
 	"waveformURL": "http://<<URL and port to show event waveform>>",
-	"mapSpatialReference":"3857",
+	"mapSpatialReference":"4326",
 	"bufferSpatialReference":"4326",
-	"lightningBufferSpatialReference":"3857",
+	"lightningBufferSpatialReference":"4326",
 	"lightningPlotSpatialReference":"4326",
 	"printServiceURL": "https://utility.arcgisonline.com/arcgis/rest/services/Utilities/PrintingTools/GPServer/Export%20Web%20Map%20Task",
 	"apiKey":"",
-	"stationLayerID": "6",
-	"lineLayerID": "4",
-	"structureLayerID": "5",
-	"switchLayerID": "3",
-	"fiLayerID": "3",
+	"oauthEnabled": false,
+	"portalURL": "https://www.arcgis.com/",
+	"appId": "bwpKav7W3Ta9bToC",
+	"stationLayerID": "0",
+	"lineLayerID": "3",
+	"structureLayerID": "1",
+	"switchLayerID": "4",
+	"fiLayerID": "2",
 	"maxRecordCount": "2000",
 	"faultLocID": "0",
 	"initialExtent": "{ \"xmin\": -87.1, \"ymin\": 30.8, \"xmax\": -78.6, \"ymax\": 35, \"padding\": { \"right\": 400}, \"spatialReference\": 4326 }",
+	"aovThreshold": "0.5",
 	"aovPopuptitle": "Area of Vulnerability: {id}",
 	"aov1PopupFields": [{
 			"fieldName": "Bus1Name",
@@ -170,7 +175,7 @@
 			"isStatusFeature": false
 		}
 	],
-	"switchEnabled":false,
+	"switchEnabled":true,
 	"switchKeys": [
 		{
 			"name": "ITS_TL_ID"
@@ -251,5 +256,11 @@
 	"structureLabel": "{\"symbol\":{\"type\":\"text\",\"color\":\"black\",\"font\":{\"family\":\"Arial\",\"size\":12}},\"labelPlacement\":\"above-center\",\"labelExpression\":\"[STOMPDB.Structure.STRC_NUM]\"}",
 	"useSpanTolerance": true,
 	"spanTolerance": ".005",
-	"timezone": "America/Chicago"
+	"timezone": "America/Chicago",
+	"colorWays": [
+		[128, 0, 38, 1],
+		[252, 78, 42, 1],
+		[14, 115, 73, 1]
+	],
+	"animateZooms": false
 }

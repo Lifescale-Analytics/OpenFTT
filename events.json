@@ -2,8 +2,8 @@
 	{
 	  "event_datetime": "2024-01-01T13:00:00.123",
 	  "line": "CLM",
-	  "substation": "M",
-	  "distance_miles": 2,
+	  "substation": "AE",
+	  "distance_miles": 1,
 	  "eventid":123456
 	},
 	{
@@ -20,4 +20,4 @@
 	  "distance_miles": 10,
 	  "eventid": 123458
 	}
-  ]
+]
