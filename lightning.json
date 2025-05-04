@@ -1,0 +1,1 @@
+"{\"features\":[{\"geometry\":{\"type\":\"Point\",\"coordinates\":[-81.3659,32.14]},\"type\":\"Feature\",\"properties\":{\"time\":\"2024-01-01T13:00:00.123Z\",\"signalStrengthKA\":-124.1,\"cloud\":false,\"ellSemiMajM\":200,\"ellSemiMinM\":200,\"ellAngleDeg\":107}}],\"type\":\"FeatureCollection\"}"

@@ -1053,7 +1053,7 @@ require([
 
   function queryForLineGeometries() {
     var lineQuery = lineLayer.createQuery();
-
+    lineQuery.outFields="*";
     return lineLayer.queryFeatures(lineQuery).then(function (response) {
       lineGeometries = response.features.map(function (feature) {
         return feature.geometry;
@@ -1386,7 +1386,7 @@ require([
   function stationChangeFunc(startStationName) {
     stationLayer.createFeatureLayer().then(function (startStationLayer) {
       var query = startStationLayer.createQuery();
-      query.where = `${stationKeyField} = '${startStationName}'`;
+      query.where = `${stationKeyField} = '${startStationName}'`; //TODO: this had to be changed for TVA. The single quotes had to be removed.
       startStationLayer
         .queryFeatures(query)
         .then(queryForStartStationGeometries)
@@ -2203,7 +2203,7 @@ require([
       setStationByName();
       stationLayer.createFeatureLayer().then(function (startStationLayer) {
         var query = startStationLayer.createQuery();
-        query.where = `${stationKeyField} = '${startStationID}'`;
+        query.where = `${stationKeyField} = '${startStationID}'`; //TODO: this had to be changed for TVA. The single quotes had to be removed.
         startStationLayer
           .queryFeatures(query)
           .then(queryForStartStationGeometries)
@@ -3645,7 +3645,7 @@ require([
         let substation = eventToPlot[2].textContent;
         let distance = eventToPlot[3].textContent;
 		let lineid = eventToPlot[5].textContent;
-        document.getElementById("evttime").value = datetime;
+        document.getElementById("evttime").value =  moment(new Date(events[evt]["event_datetime"]).toISOString()).tz(timezone).format("MM/DD/YYYY HH:mm:ss.SSS");
         
         let lineSelect = document.getElementById("lineSelect")
         for (let i = 0; i < lineSelect.options.length; i++) {
