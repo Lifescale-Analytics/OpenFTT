@@ -336,6 +336,10 @@ require([
   var switchEnabled = data.switchEnabled;
   var useSwitchLabel = data.useSwitchLabel;
   var fiLayerID = parseInt(data.fiLayerID);
+  var lightningIsLayer = data.lightningIsLayer;
+  var lightningLayerID = parseInt(data.lightningLayerID);
+  var lightningEllipseisLayer = data.lightningEllipseIsLayer;
+  var lightningEllipseLayerID = parseInt(data.lightningEllipseLayerID);
   var maxRecordCount = parseInt(data.maxRecordCount);
   var timezone = data.timezone;
   var lineFields = data.lineFields;
@@ -354,6 +358,7 @@ require([
   var oauthEnabled = data.oauthEnabled;
   var portalURL = data.portalURL;
   var appId = data.appId;
+  var defaultTimeWindow = parseInt(data.defaultTimeWindow);
 
 
   var structureKeyField = fltStructureFields
@@ -454,6 +459,7 @@ require([
   var loader = $("#loader");
   var previousLineIndex = -1;
   var eventTimeFrame = 24;
+
 
   //change color for multi-endied fault location
   //var faultLocID = 0;
@@ -1907,6 +1913,10 @@ require([
     
     var evtstoptime = document.getElementById("evtstoptime");
     evtstoptime.value = evttime.value;
+
+    var timewindow = document.getElementById("timewindow");
+    timewindow.value = defaultTimeWindow;
+
   }
 
   function populateLineDropDown(showLoader = false) {
@@ -3087,7 +3097,7 @@ require([
 
   function lightningSearch() {
     //get line buffer
-    if (txdenabled || integratorenabled) {
+    if (txdenabled || integratorenabled || lightningIsLayer) {
       var params = new BufferParameters({
         distances: [1],
         unit: "kilometers",
@@ -3128,11 +3138,13 @@ require([
           if (integratorenabled) {
             req = makeVAPIpolyRequestBody(lineBuffer);
             rsp = authorizeVAPI("polygon",req);
-          } else {
+          } else if (txdenabled){
             req = makeTXDpolyrequest(lineBuffer);
             rsp = sendTXDrequest(req, "evttime");
-          }
+          } else if (lightningIsLayer || lightningEllipseisLayer) {
+            //TODO: lightning layer search
 
+          } 
         });
     } else {
       console.log("Lightning search feature not enabled");
@@ -3147,6 +3159,9 @@ require([
       maxDiff = 0;
       var req = makeTXDpointrequest();
       var rsp = sendTXDrequest(req, "ltgevttime");
+    } else if (lighningIsLayer || lightningEllipseisLayer) {
+      //TODO: lightning layer search
+
     } else {
       console.log("Lightning search feature not enabled");
     }
