@@ -710,6 +710,13 @@ require([
 
   }
 
+  var lightningPointLayer;
+  if(lightningIsLayer){
+    var lightningSubLayer = new Sublayer({id: lightningLayerID, visible: false});
+    txMapLayers.sublayers.add(lightningSubLayer);
+    lightningPointLayer = txMapLayers.findSublayerById(lightningLayerID);
+  }
+
   var structurePopupTemplate = {
     title: "Structure: {" + `${structureTitleField}` + "}",
     outFields: ["*"],
@@ -1485,7 +1492,7 @@ require([
       return false;
     }
     var maxDiff = parseInt(document.getElementById("timewindow").value);
-    if (isNaN(maxDiff) || maxDiff < 0 || maxDiff > 999) {
+    if (isNaN(maxDiff) || maxDiff < 0 || maxDiff > 5000) {
       showAlert && alert("Please enter valid value for Time Window");
       return false;
     }
@@ -3142,13 +3149,133 @@ require([
             req = makeTXDpolyrequest(lineBuffer);
             rsp = sendTXDrequest(req, "evttime");
           } else if (lightningIsLayer || lightningEllipseisLayer) {
-            //TODO: lightning layer search
-
+            lightningLayerSearch("polygon",lineBuffer);
           } 
         });
     } else {
       console.log("Lightning search feature not enabled");
     }
+  }
+
+  function lightningLayerSearch(reqtype, lineBuffer) {
+    var query = lightningPointLayer.createQuery();
+    query.outFields = "*";
+    query.spatialRelationship = "intersects";
+    query.returnGeometry = true;
+    query.outSpatialReference = mapSpatialReference;
+    var evttimevaluestart;
+    var evttimevaluestop;
+
+    if(reqtype=="point"){
+      //get time info from form.
+      var evttime = document.getElementById("ltgevttime");
+      var evttimestop = document.getElementById("ltgevttimestop");
+      evttimevaluestart = moment.tz(
+        evttime.value,
+        "MM/DD/YYYY HH:mm:ss.SSS",
+        timezone
+      );
+
+      evttimevaluestop = moment.tz(
+        evttimestop.value,
+        "MM/DD/YYYY HH:mm:ss.SSS",
+        timezone
+      );
+
+      var lat = document.getElementById("ltgLat").value;
+      var lon = document.getElementById("ltgLon").value;
+      var dist = document.getElementById("ltgDistance").value;
+
+      //proximity search
+      query.geometry = new Point({longitude: lon, latitude: lat});
+      query.distance = dist;
+      query.units = "miles";
+
+    } else if(reqtype=="polygon") {
+      //get time info from form.
+      var evttime = document.getElementById("evttime");
+      var timewindow =  parseInt(document.getElementById("timewindow").value);
+
+      var evttimeval = moment.tz(
+        evttime.value,
+        "MM/DD/YYYY HH:mm:ss.SSS",
+        timezone
+      );
+      var starttime = evttimeval.valueOf() -timewindow;
+      var stoptime = evttimeval.valueOf() + timewindow;
+
+      //convert to moment objects
+      evttimevaluestart = moment.tz(starttime,timezone);
+      evttimevaluestop = moment.tz(stoptime,timezone);
+
+      //proximity search
+      query.geometry = lineBuffer;
+    }
+
+    //time query
+    query.where = `EVENTCENTRALTIME between timestamp '${evttimevaluestart.format("YYYY-MM-DD HH:mm:ss.SSS")}' and timestamp '${evttimevaluestop.format("YYYY-MM-DD HH:mm:ss.SSS")}'`;
+
+    //run the query, process the results.
+    lightningPointLayer.queryFeatures(query).then(function (response) {
+      var ltgPoints=[];
+
+      response.features.forEach(function(feature, index) {
+        const attributes = feature.attributes;
+        let evttime = moment(attributes.EVENTCENTRALTIME).tz("GMT").format("YYYY-MM-DD HH:mm:ss.SSS");
+        ltgPoints.push({
+          id: index +1,
+          time: evttime,
+          lat: feature.geometry.latitude,
+          lon: feature.geometry.longitude,
+          signal: attributes.AMPLITUDE,
+          smin: attributes.ELL_SMIN,
+          smaj: attributes.ELL_SMAJ,
+          angle: attributes.ELL_ANGLE,
+          cg: attributes.ColdToGround_Indicator,
+          risetime: attributes.Waveform_RiseTime,
+          peaktozero: attributes.Waveform_PeakToZero,
+          maxrateofrise: attributes.Waveform_MaxRateOfRise,
+          flashmultiplicty: attributes.Flash_Multiplicity,
+          sensorcount: attributes.Sensor_Count,
+          locationdf: attributes.Location_DF,
+          locationchi2: attributes.Location_ChiSquared,
+          angleindicator: attributes.Angle_Indicator,
+          signalindicator: attributes.Signal_Indicator,
+          tminingindicator: attributes.Timing_Indicator
+        });
+      });
+
+      if(ltgPoints.length > 0)
+      {
+        plotLightning(ltgPoints);
+      } else {
+        ltgPoints.push({
+          id: "No Lightning Found",
+          lat: "",
+          lon: "",
+          signal: "",
+          time: "",
+        });
+        var ltgtresultdiv = document.getElementById("ltgresults");
+        ltgtresultdiv.style.display = "block";
+        //resize the infoDiv
+        getInfoDivMinHeight();
+
+        var tbl = document
+          .getElementById("resultstblltg")
+          .getElementsByTagName("tbody")[0];
+        var row = tbl.insertRow(tbl.rows.length);
+        var str = row.insertCell(0);
+        var tim = row.insertCell(1);
+        str.innerHTML = "<font color='red'>No lightning found.</font>";
+        tim.innerHTML = document.getElementById(starttimefield).value;
+        var outputType = getUrlParameter("output");
+        if (outputType.length > 0 && outputType == "jpg") {
+          getOutput();
+        }
+      }
+    });
+
   }
 
   function lightningSearchAdv() {
@@ -3159,8 +3286,8 @@ require([
       maxDiff = 0;
       var req = makeTXDpointrequest();
       var rsp = sendTXDrequest(req, "ltgevttime");
-    } else if (lighningIsLayer || lightningEllipseisLayer) {
-      //TODO: lightning layer search
+    } else if (lightningIsLayer || lightningEllipseisLayer) {
+      lightningLayerSearch("point",null);
 
     } else {
       console.log("Lightning search feature not enabled");
