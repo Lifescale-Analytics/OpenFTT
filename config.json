@@ -17,7 +17,7 @@
 	"mapServerURL": "baseURL/FTT3857/Mapserver/",
 	"eventsURL": "http://<<events URL and port info>>",
 	"eventsRefreshInterval": "60",
-	"enableEventsTab": "true",
+	"enableEventsTab": true,
 	"waveformURL": "http://<<URL and port to show event waveform>>",
 	"mapSpatialReference":"3857",
 	"bufferSpatialReference":"3857",
