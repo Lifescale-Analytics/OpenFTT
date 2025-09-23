@@ -1,38 +1,299 @@
-import esriConfig from "https://js.arcgis.com/4.33/@arcgis/core/config.js";
-import Map from "https://js.arcgis.com/4.33/@arcgis/core/Map.js";
-import Print from "https://js.arcgis.com/4.33/@arcgis/core/widgets/Print.js";
-import CoordinateConversion from "https://js.arcgis.com/4.33/@arcgis/core/widgets/CoordinateConversion.js";
-import MapView from "https://js.arcgis.com/4.33/@arcgis/core/views/MapView.js";
-import Sublayer from "https://js.arcgis.com/4.33/@arcgis/core/layers/support/Sublayer.js";
-import Polyline from "https://js.arcgis.com/4.33/@arcgis/core/geometry/Polyline.js";
-import Point from "https://js.arcgis.com/4.33/@arcgis/core/geometry/Point.js";
-import GraphicsLayer from "https://js.arcgis.com/4.33/@arcgis/core/layers/GraphicsLayer.js";
-import * as locator from "https://js.arcgis.com/4.33/@arcgis/core/rest/locator.js";
-import * as gsvc from "https://js.arcgis.com/4.33/@arcgis/core/rest/geometryService.js";
-import * as geometryEngine from "https://js.arcgis.com/4.33/@arcgis/core/geometry/geometryEngine.js";
-import BufferParameters from "https://js.arcgis.com/4.33/@arcgis/core/rest/support/BufferParameters.js";
-import Graphic from "https://js.arcgis.com/4.33/@arcgis/core/Graphic.js";
-import SpatialReference from "https://js.arcgis.com/4.33/@arcgis/core/geometry/SpatialReference.js";
-import BasemapToggle from "https://js.arcgis.com/4.33/@arcgis/core/widgets/BasemapToggle.js";
-import ScaleBar from "https://js.arcgis.com/4.33/@arcgis/core/widgets/ScaleBar.js";
-import MapImageLayer from "https://js.arcgis.com/4.33/@arcgis/core/layers/MapImageLayer.js";
-import * as urlUtils from "https://js.arcgis.com/4.33/@arcgis/core/core/urlUtils.js";
-import * as webMercatorUtils from "https://js.arcgis.com/4.33/@arcgis/core/geometry/support/webMercatorUtils.js";
-import Popup from "https://js.arcgis.com/4.33/@arcgis/core/widgets/Popup.js";
-import TextSymbol from "https://js.arcgis.com/4.33/@arcgis/core/symbols/TextSymbol.js";
-import * as reactiveUtils from "https://js.arcgis.com/4.33/@arcgis/core/core/reactiveUtils.js";
-const response = await fetch('./config.json');
-const data = await response.json();
-import Portal from "https://js.arcgis.com/4.33/@arcgis/core/portal/Portal.js";
-import OAuthInfo from "https://js.arcgis.com/4.33/@arcgis/core/identity/OAuthInfo.js";
-import esriId from "https://js.arcgis.com/4.33/@arcgis/core/identity/IdentityManager.js";
-import * as proximityOperator from "https://js.arcgis.com/4.33/@arcgis/core/geometry/operators/proximityOperator.js";
-import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/geometry/operators/intersectionOperator.js";
+let eventIntervalID;
+var configValues;
+$.getJSON('config.json', function(config) {
+  configValues = config;
+});
 
+function getCookie(cname) {
+  let name = cname + "=";
+  let ca = document.cookie.split(";");
+  for (let i = 0; i < ca.length; i++) {
+    let c = ca[i];
+    while (c.charAt(0) == " ") {
+      c = c.substring(1);
+    }
+    if (c.indexOf(name) == 0) {
+      return c.substring(name.length, c.length);
+    }
+  }
+  return "";
+}
 
+function checkCookie() {
+  let autozoom = (getCookie("autozoomtofault")==='true');
+  eventDefault = (getCookie("eventtabdefault")==='true');
+  document.getElementById("autozoom").checked = autozoom;
+}
+
+function clearEventsTable() {
+  var tbodyevt = document.getElementById("tblevt");
+  var newtblevt = document.createElement("tbody");
+  newtblevt.setAttribute("id", "tblevt");
+  tbodyevt.parentNode.replaceChild(newtblevt, tbodyevt);
+}
+
+function updateEventTimes(timespan) {
+  var evtstoptime = document.getElementById("evtstoptime");
+  evtstoptime.value = moment().tz(configValues.timezone).format("MM/DD/YYYY HH:mm:ss.SSS");
+  
+  var evtstarttime = document.getElementById("evtstarttime");
+  evtstarttime.value = moment(new Date(evtstoptime.value).toISOString()).subtract(timespan, "hours").format("MM/DD/YYYY HH:mm:ss.SSS");
+}
+
+function enableAutoEventRefresh() {
+  eventIntervalID = setInterval(function() {
+      clearEventsTable();
+	  let timespan = document.getElementById("eventTimeFrame").value
+      updateEventTimes(timespan);
+      document.getElementById("load-events").click();  
+    }, parseInt(configValues.eventsRefreshInterval) * 1000); 
+}
+
+function disableAutoEventRefresh() {
+  eventIntervalID && clearInterval(eventIntervalID);
+  eventIntervalID = null;
+}
+
+function openTab(evt, tabName) {
+  var evttime = document.getElementById("evttime");
+  var ltgevttime = document.getElementById("ltgevttime");
+  var evtwindow = document.getElementById("timewindow");
+  // var ltgwindow = document.getElementById("ltgtimewindow");
+
+  if (tabName == "ltgPanel") {
+    //copy evttime from fault panel
+    ltgevttime.value = evttime.value;
+    //ltgwindow.value = evtwindow.value;
+  }
+
+  if (tabName == "evtPanel") {
+    //clear & load events
+    clearEventsTable();
+    document.getElementById("load-events").click();
+  } else {
+    //clear reload timer, remove grid data and hide div
+    clearEventsTable();
+    disableAutoEventRefresh();
+    var evtresultsdiv = document.getElementById("evtresults");
+    evtresultsdiv.style.display = "none";
+  }
+
+  //else {
+  //don't overwrite timestamps with blank values
+  //if (ltgevttime.value.length > 0) {
+  //	evttime.value=ltgevttime.value;
+  //evtwindow.value = ltgwindow.value;
+  //}
+  //}
+
+  var i, tabcontent, tablinks;
+
+  tabcontent = document.getElementsByClassName("tabcontent");
+  for (i = 0; i < tabcontent.length; i++) {
+    tabcontent[i].style.display = "none";
+  }
+  tablinks = document.getElementsByClassName("tablinks");
+  for (i = 0; i < tablinks.length; i++) {
+    tablinks[i].className = tablinks[i].className.replace(" active", "");
+  }
+  document.getElementById(tabName).style.display = "block";
+  evt.currentTarget.className += " active";
+  //resize infoDiv minHeight by tab
+  getInfoDivMinHeight();
+  
+}
+
+function getInfoDivMinHeight(){
+  var minHeight=71;
+  var openBlock=0;
+
+  tabcontent = document.getElementsByClassName("tabcontent");
+  for (i=0; i< tabcontent.length; i++){
+    if(tabcontent[i].style.display== "block"){
+      openBlock=1;
+      switch(i){
+        case 0:
+		  //faults
+		  minHeight=176;
+		  break;
+        case 2:
+          //lightning
+          minHeight=156;
+          break;
+        case 3:
+          //AOV
+          minHeight=278;
+          break;
+        case 1:
+          //events
+          minHeight=100;
+          break;
+        case 4:
+        case 7:
+          //bookmarks,  help
+          minHeight=71;
+          break;
+        case 6:
+          //tools
+          minHeight=71;
+          if($("#printpanel")[0].style.display=='block') { 
+            minHeight +=500;
+          }
+          break;
+        case 5:
+          //legend
+          minHeight=223;
+          break;
+      }
+    }
+    //stop going through for loop if we've found the open block
+    if(openBlock==1){
+      break;
+    }
+  }
+
+  //is the ltgresults tab open
+  if($("#ltgresults")[0].style.display=='block'){
+    minHeight+=300;
+  }
+
+  //is the fltresults tab open
+  if($("#fltresults")[0].style.display=='block'){
+    minHeight+=300;
+  }
+
+  //is the evtresults tab open
+  if($("#evtresults")[0].style.display=='block'){
+    minHeight+=300;
+  }
+
+  var infoDiv = $("#infoDiv");
+  infoDiv.height(minHeight);
+  infoDiv.draggable().resizable({
+    minHeight: minHeight,
+    minWidth: infoDiv.outerWidth(),
+  });
+
+}
+
+function setupAOVLegend(colors, breakpoints) {
+  var aovLegendTable = document.getElementById("aovLegend");
+  const tableBody = document.createElement("tbody");
+  for (let row = 0; row < colors.length; row++) {
+    const currentRow = document.createElement("tr");
+    const colorCell = document.createElement("td");
+    const colorCircle = document.createElement("span");
+    colorCircle.style.background = `rgb(${colors[row][0]}, ${colors[row][1]}, ${colors[row][2]})`;
+    colorCircle.className = 'circle';
+    colorCell.appendChild(colorCircle);
+    colorCell.style.width = '100px';
+    currentRow.appendChild(colorCell);
+    const textCell = document.createElement("td");
+    textCell.textContent = (`${row === 0 ? 0 : breakpoints[row - 1]} - ${row === 0 ? breakpoints[row] : (row === colors.length - 1 ) ? '1' : breakpoints[row]}`);
+    currentRow.appendChild(textCell);
+    tableBody.appendChild(currentRow);
+  }
+  aovLegendTable.appendChild(tableBody);
+}
+
+function downloadLightning(){
+  var csv=[];
+  var ltgtbl = document.getElementById("resultstblltg").querySelectorAll('tr');
+  ltgtbl.forEach(function(row){
+    var cols=row.querySelectorAll('td,th');
+    var csvcols=[];
+    cols.forEach(function(c){
+      csvcols.push(c.innerText);
+    });
+    csv.push(csvcols.join(","));
+  });
+
+  var csvdata = csv.join('\n');
+  CSVFile = new Blob([csvdata], {type: "text/csv"});
+  var link = document.createElement('a');
+
+  link.download = "lightning.csv";
+  var url = window.URL.createObjectURL(CSVFile);
+  link.href=url;
+  link.style.display="none";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+}
+
+require([
+  "esri/config",
+  "esri/Map",
+  "esri/widgets/Print",
+  "esri/widgets/CoordinateConversion",
+  "esri/views/MapView",
+  "esri/layers/FeatureLayer",
+  "esri/layers/support/Sublayer",
+  "esri/geometry/Polyline",
+  "esri/geometry/Point",
+  "esri/layers/GraphicsLayer",
+  "esri/tasks/Locator",
+  "esri/tasks/GeometryService",
+  "esri/geometry/geometryEngine",
+  "esri/tasks/support/ProjectParameters",
+  "esri/tasks/support/BufferParameters",
+  "esri/tasks/support/Query",
+  "esri/Graphic",
+  "esri/geometry/SpatialReference",
+  "esri/widgets/BasemapToggle",
+  "esri/widgets/ScaleBar",
+  "esri/layers/MapImageLayer",
+  "esri/geometry/Extent",
+  "esri/core/urlUtils",
+  "esri/geometry/support/webMercatorUtils",
+  "esri/symbols/PictureMarkerSymbol",
+  "esri/symbols/TextSymbol",
+  "esri/layers/support/LabelClass",
+  "esri/core/Collection",
+  "dojo/json",
+  "dojo/text!./config.json",
+  "esri/portal/Portal",
+  "esri/identity/OAuthInfo",
+  "esri/identity/IdentityManager",
+], function (
+  esriConfig,
+  Map,
+  Print,
+  CoordinateConversion,
+  MapView,
+  FeatureLayer,
+  Sublayer,
+  Polyline,
+  Point,
+  GraphicsLayer,
+  Locator,
+  GeometryService,
+  geometryEngine,
+  ProjectParameters,
+  BufferParameters,
+  Query,
+  Graphic,
+  SpatialReference,
+  BasemapToggle,
+  ScaleBar,
+  MapImageLayer,
+  Extent,
+  urlUtils,
+  webMercatorUtils,
+  PictureMarkerSymbol,
+  TextSymbol,
+  LabelClass,
+  Collection,
+  json,
+  data,
+  Portal,
+  OAuthInfo,
+  esriId
+) {
   //configuration
   var serverIP = `${window.location.origin}/`;
-  //var data = JSON.parse(confdata);
+  var data = JSON.parse(data);
   esriConfig.apiKey = data.apiKey;
   var gisServerName = data.servername;
   var useProxy = data.useProxy;
@@ -198,7 +459,6 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
   var loader = $("#loader");
   var previousLineIndex = -1;
   var eventTimeFrame = 24;
-  var selectedStationName;
 
 
   //change color for multi-endied fault location
@@ -401,8 +661,7 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
   }
 
   //set up map services / layers
-  //var gsvc = new GeometryService({ url: gsvcURL });
-  //var gsvc = GeometryService();
+  var gsvc = new GeometryService({ url: gsvcURL });
   var ltgLayer = new GraphicsLayer();
   var faultsLayer = new GraphicsLayer();
   var startStationLayer = new GraphicsLayer();
@@ -461,7 +720,7 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
   var structurePopupTemplate = {
     title: "Structure: {" + `${structureTitleField}` + "}",
     outFields: ["*"],
-    content: distanceToStation
+    content: distanceToStation,
   };
 
   var aovPopupTemplate = {
@@ -530,8 +789,7 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
 
   //create output table headers
   var resulttblhdr = document.getElementById("resulttblhdr");
-  let row = resulttblhdr.insertRow(-1);
-  var headerCell;
+  row = resulttblhdr.insertRow(-1);
   structTblHeaders.map((f)=> { 
     headerCell = document.createElement("TH"); 
     headerCell.innerHTML = f.split(",")[0]; 
@@ -559,7 +817,6 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
       aovLayer,
     ],
   });
-
 
   //ui components
   function displayFIInfo(feature) {
@@ -657,6 +914,7 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
     });
 
     output = output.replace(/,/gi, "");
+
     div.innerHTML = output;
     return div;
   }
@@ -673,7 +931,7 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
         spatialReference: {wkid: mapSpatialReference}
       });
       var seg = new Polyline();
-	    seg.spatialReference = new SpatialReference({wkid: mapSpatialReference });
+	    seg.spatialReference = SpatialReference({wkid: mapSpatialReference });
       seg.addPath([poi, stationPoint]);
       var segLength = geometryEngine.geodesicLength(seg, "miles");
       var out = segLength.toFixed(2) + " to " + stationList[i].name + "<br />";
@@ -1097,7 +1355,7 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
       spatialReference: { wkid: 4326 },
     });
 
-    let ltg = new Graphic({
+    ltg = new Graphic({
       geometry: ltgPOI,
       symbol: faultLocationSymbol(0),
     });
@@ -1114,8 +1372,8 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
       outSpatialReference: mapSpatialReference,
     });
 
-    var poi = gsvc.buffer(gsvcURL,params).then(function (poiPoints) {
-      let poiBuffer = poiPoints[0];
+    var poi = gsvc.buffer(params).then(function (poiPoints) {
+      poiBuffer = poiPoints[0];
       ltgLayer.add(
         new Graphic({
           geometry: poiBuffer,
@@ -1304,7 +1562,8 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
     extent: initialExtent
   });
 
- 
+
+
   //widgets
   var toggle = new BasemapToggle({
     view: view,
@@ -1451,39 +1710,34 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
     className: "fa fa-clipboard",
   };
 
-  view.popup = new Popup();
-  view.popup.actions = [copyLatLongAction];
-
   view.on("double-click", function (event) {
     event.stopPropagation();
-    var maplong = event.mapPoint.longitude;
-    var maplat = event.mapPoint.latitude;
-    var lon = Math.round(maplong * 1000) / 1000;
-    var lat = Math.round(maplat * 1000) / 1000;
+    // Get the coordinates of the click on the view
+    var longitude = event.mapPoint.longitude;
+    var latitude = event.mapPoint.latitude;
 
-    view.openPopup({
+    var lon = Math.round(longitude * 1000) / 1000;
+    var lat = Math.round(latitude * 1000) / 1000;
+
+    view.popup.open({
       title: `POI`,
       content: `Latitude: ${lat}/ Longitude: ${lon}`,
-      location: event.mapPoint
+      location: event.mapPoint,
+      actions: [copyLatLongAction],
     });
 
+    function copyLatLong() {
+      document.getElementById("ltgLat").value = latitude;
+      document.getElementById("ltgLon").value = longitude;
+      document.getElementById("lightningPanel").click();
+    }
+
+    view.popup.on("trigger-action", (event) => {
+      if (event.action.id === "copyAction") {
+        copyLatLong();
+      }
+    });
   });
-
-  reactiveUtils.on(() => view.popup, "trigger-action", (event) => {
-    if(event.action.id==="copyAction"){
-    // Get the coordinates of the click on the view
-      copyLatLong();
-    } 
-  });
-
-  function copyLatLong() {
-    //update coords for copy action
-    const geom = view.popup.selectedFeature?.geometry?.latitude==null ? view.popup.location : view.popup.selectedFeature.geometry;
-    document.getElementById("ltgLat").value = geom.latitude;
-    document.getElementById("ltgLon").value = geom.longitude;
-    document.getElementById("lightningPanel").click();
-  }
-
 
   function selectLine() {
     if (defaultLineId != "") {
@@ -1761,8 +2015,8 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
         outSpatialReference: mapSpatialReference,
       });
 
-      gsvc.buffer(gsvcURL,params).then(function (lineBuffers) {
-        let lineBuffer = lineBuffers[0];
+      gsvc.buffer(params).then(function (lineBuffers) {
+        lineBuffer = lineBuffers[0];
         //bufferLayer.add(new Graphic({geometry: lineBuffer}));
         zoomTo(lineBuffer);
 
@@ -1794,8 +2048,8 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
         outSpatialReference: mapSpatialReference,
       });
 
-      return gsvc.buffer(gsvcURL, params).then(function (lineBuffers){
-        let lineBuffer = lineBuffers[0];
+      return gsvc.buffer(params).then(function (lineBuffers){
+        lineBuffer = lineBuffers[0];
         return queryForStructuresByProx(lineBuffer)
               .then(getUniqueValues)
               .then(setStructureDefByProx);
@@ -2119,7 +2373,7 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
           alert("Please select a station");
           return;
         } else {
-          let lineID = lineSelect.value;
+          lineID = lineSelect.value;
           getFaultIndicators(lineID);
           queryForFIStatus();
           var endCoordinate = [];
@@ -2240,236 +2494,117 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
       searchParams.toString();
   }
 
-  function locateNearestStructureToStation() {
-        const allVertices = [];
-        for (const line of lineGeometries) {
-            for (const path of line.paths) {
-                for (const vertex of path) {
-                    allVertices.push(vertex);
-                }
-            }
-        }
-        const mergedPolyline = new Polyline({
-            paths: [allVertices],
-            spatialReference: { wkid: mapSpatialReference }
+  function getFaultLocations(distance, endCoordinate = null) {
+    //get endpoints for all the lines/paths
+    var segmentEndpoints = getSegmentEndPoints(lineGeometries);
+    if (endCoordinate !== null) {
+      var endSegment = segmentEndpoints.filter((point) => {
+        return point.endPt[0].toString() == endCoordinate[0].toString() && point.endPt[1].toString() == endCoordinate[1].toString();
+      });
+    }
+    //get start point on line - nearest to substation
+    var startPos = getStartPosition(startStationGeometries, segmentEndpoints);
+    //build network topology from start station
+    var neighbors = getNeighbors(segmentEndpoints);
+    //
+    //printNeighbors(neighbors);
+    //get paths
+    var curPath = [];
+    var paths = [];
+    //multiple segment line, get neighbors, else specify current line as path.
+    if (neighbors.length > 1) {
+      getPaths(neighbors, paths, curPath, startPos.id.toString(), endCoordinate ? endSegment[0].id.toString() : null);
+    } else {
+      paths.push(startPos.id.toString());
+    }
+    //get rid of paths that don't end at our coordinate
+    if (endCoordinate !== null) {
+      if (paths.length > 1) {
+        paths = paths.filter(subArray => {
+          return (subArray[subArray.length -1] === endSegment[0].id.toString());
         });
-        const stationPoint = new Point({
-            longitude: startStationGeometries[0].longitude,
-            latitude: startStationGeometries[0].latitude,
-            spatialReference: { wkid: mapSpatialReference }
-        });
-        const nearestVertex = proximityOperator.getNearestVertex(mergedPolyline, stationPoint);
-        faultsLayer.add(
-            new Graphic({
-                geometry: getPoint(nearestVertex.coordinate.x, nearestVertex.coordinate.y),
-                symbol: {
-                    type: "simple-marker",
-                    style: "circle",
-                    color: "green",
-                    outline: {
-                        width: 1.25,
-                        color: "darkgreen"
-                    },
-                    size: 8
-                }
-            })
-        );
-        let lineIndex, pathIndex;
-        lineGeometries.forEach( (line, index) => {
-            let vertex = line.paths[0].findIndex( path => path[0] == nearestVertex.coordinate.x && path[1] == nearestVertex.coordinate.y);
-            if (vertex >= 0) {
-                lineIndex = index;
-                pathIndex = vertex;
-            }
-        });
-        return { lineIndex, pathIndex, nearestVertex};
-  }
-
-  function findPointsOfIntersection() {
-    
-    const allIntersections = [];
-
-    for (let i = 0; i < lineGeometries.length; i++) {
-        for (let j = i + 1; j < lineGeometries.length; j++) {
-            const intersections = geometryEngine.intersectLinesToPoints(lineGeometries[i], lineGeometries[j]);
-            if (intersections && intersections.length > 0) {
-                allIntersections.push({
-                    point: intersections,
-                    lines: [i, j]
-                });
-            }
-        }
+      }
+    }
+    //find position(s)  & plot fault(s) on map
+    var faultCoords = [];
+    if (paths.length < 1) {
+      paths.push(curPath);
+    }
+    for (let p in paths) {
+      faultCoords.push(
+        getFaultCoords(lineGeometries, distance, startPos, paths[p])
+      );
     }
 
-    const uniqueIntersections = [];
-    const seen = new Set();
+    //remove empty values
+    cleanFaultCoords(faultCoords);
+    //plot faults on map, if any remain
+    if (faultCoords.length > 0) {
+      var fltpts = plotFaultsOnMap(faultCoords);
+      //find nearest structures
+      findNearestStructures(fltpts);
+    } else {
+      //no fault coordinates found
+      var fltresultdiv = document.getElementById("fltresults");
+      fltresultdiv.style.display = "block";
 
-    allIntersections.forEach( intersection => {
-        const key = `${intersection.point[0].x.toFixed(6)}_${intersection.point[0].y.toFixed(6)}`; // rounding helps with floating-point precision
-        if (!seen.has(key)) {
-            seen.add(key);
-            uniqueIntersections.push(intersection);
-        }
-    });
+      //resize info div container
+      getInfoDivMinHeight();
 
-    return uniqueIntersections;
-
-  }
-
-  function locateFaultPointsOnLine(totalDistance, currentDistance, lineIndex, startIndex, intersections) {
-    let currentLine = lineGeometries[lineIndex];
-    let paths = []
-    if (startIndex !== currentLine.paths[0].length - 1) paths.push(currentLine.paths[0].slice(startIndex));
-    if (startIndex !== 0) paths.push(currentLine.paths[0].slice(0, startIndex + 1).reverse());
-    paths.forEach( path => {
-        let currentPathDistance;
-        for (let i = 0; i < path.length; i++) {
-            if (i == 0 ) currentPathDistance = currentDistance;
-            if (i > 0) {
-                let lastPoint = getWMPoint(path[i - 1]);
-                let nextPoint = getWMPoint(path[i]);
-                let intersection = intersections.find(intersection => path[i][0] === intersection.point.x && path[i][1] === intersection.point.y)
-                if (intersection) {
-                    let newLineIndex = intersection.lines.find(line => line != lineIndex);
-                    let newStartIndex = lineGeometries[newLineIndex].paths[0].find(vertex => vertex[0] === intersection.point.x && vertex[1] === intersection.point.y)
-                    locateFaultPointsOnLine(totalDistance, currentPathDistance, newLineIndex, newStartIndex, intersections);
-                }
-                let distanceToNextStructure = geometryEngine.distance(lastPoint, nextPoint, "miles");
-                if (currentPathDistance + distanceToNextStructure <= totalDistance) {
-                    currentPathDistance += distanceToNextStructure;
-                    if (i == path.length - 1) {
-                        plotFaultPointOnMap(nextPoint.x, nextPoint.y);
-                    }
-                } else {
-                    let distanceFromTotal = totalDistance - currentPathDistance;
-                    const faultPoint = Math.abs(totalDistance - currentPathDistance) < Math.abs(distanceToNextStructure - distanceFromTotal) ? lastPoint : nextPoint;
-                    console.log("fault point: " , faultPoint);
-                    plotFaultPointOnMap(faultPoint.x, faultPoint.y);
-                    break;
-                }
-            }
-        }
-    });
-  }
-
-  function plotFaultPointOnMap(x, y) {
-    faultsLayer.add(
-        new Graphic({
-            geometry: getPoint(x, y),
-            symbol: faultLocationSymbol(faultLocID)
-        })
-    );
-  }
-
-  function getWMPoint(coordinate) {
-    return new Point({
-        x: coordinate[0],
-        y: coordinate[1],
-        spatialReference: { wkid: 3857 }
-    });
-  }
-
-  function getFaultLocations(distance, endCoordinate = null) {
-    
-    const startStructure = locateNearestStructureToStation();
-    const intersectionPoints = findPointsOfIntersection();
-    locateFaultPointsOnLine(
-        distance,
-        startStructure.nearestVertex.distance / 1609.34,
-        startStructure.lineIndex,
-        startStructure.pathIndex,
-        intersectionPoints
-    );
-    
-    console.log("distance: ", distance);
-    console.log("line geometries: ", lineGeometries);
-    console.log("start station geometries: ", startStationGeometries);
-    console.log("nearest structure: ", startStructure);
-    console.log("intersection points: ", intersectionPoints);
-
-    // //get endpoints for all the lines/paths
-    // var segmentEndpoints = getSegmentEndPoints(lineGeometries);
-    // if (endCoordinate !== null) {
-    //   var endSegment = segmentEndpoints.filter((point) => {
-    //     return point.endPt[0].toString() == endCoordinate[0].toString() && point.endPt[1].toString() == endCoordinate[1].toString();
-    //   });
-    // }
-    // //get start point on line - nearest to substation
-    // var startPos = getStartPosition(startStationGeometries, segmentEndpoints);
-    // //build network topology from start station
-    // var neighbors = getNeighbors(segmentEndpoints);
-    // //
-    // //printNeighbors(neighbors);
-    // //get paths
-    // var curPath = [];
-    // var paths = [];
-    // //multiple segment line, get neighbors, else specify current line as path.
-    // if (neighbors.length > 1) {
-    //   getPaths(neighbors, paths, curPath, startPos.id.toString(), endCoordinate ? endSegment[0].id.toString() : null);
-    // } else {
-    //   paths.push(startPos.id.toString());
-    // }
-    // //get rid of paths that don't end at our coordinate
-    // if (endCoordinate !== null) {
-    //   if (paths.length > 1) {
-    //     paths = paths.filter(subArray => {
-    //       return (subArray[subArray.length -1] === endSegment[0].id.toString());
-    //     });
-    //   }
-    // }
-    // //find position(s)  & plot fault(s) on map
-    // var faultCoords = [];
-    // if (paths.length < 1) {
-    //   paths.push(curPath);
-    // }
-    // for (let p in paths) {
-    //   faultCoords.push(
-    //     getFaultCoords(lineGeometries, distance, startPos, paths[p])
-    //   );
-    // }
-
-    // //remove empty values
-    // cleanFaultCoords(faultCoords);
-    // //plot faults on map, if any remain
-    // if (faultCoords.length > 0) {
-    //   var fltpts = plotFaultsOnMap(faultCoords);
-    //   //find nearest structures
-    //   findNearestStructures(fltpts);
-    // } else {
-    //   //no fault coordinates found
-    //   var fltresultdiv = document.getElementById("fltresults");
-    //   fltresultdiv.style.display = "block";
-
-    //   //resize info div container
-    //   getInfoDivMinHeight();
-
-    //   var tbl = document
-    //     .getElementById("resultstbl")
-    //     .getElementsByTagName("tbody")[0];
-    //   var row = tbl.insertRow(tbl.rows.length);
-    //   var str = row.insertCell(0);
-    //   var own = row.insertCell(1);
-    //   var sta = row.insertCell(2);
-    //   var dis = row.insertCell(3);
-    //   str.innerHTML = "<font color='red'>No fault coordinates found.</font>";
-    //   own.innerHTML = "NA";
-    //   sta.innerHTML =
-    //     document.getElementById("stationSelect").options[
-    //       document.getElementById("stationSelect").selectedIndex
-    //     ].text;
-    //   dis.innerHTML = document.getElementById("faultDistance").value;
-    //   processNextBookmark();
-    // }
-    // return "";
+      var tbl = document
+        .getElementById("resultstbl")
+        .getElementsByTagName("tbody")[0];
+      var row = tbl.insertRow(tbl.rows.length);
+      var str = row.insertCell(0);
+      var own = row.insertCell(1);
+      var sta = row.insertCell(2);
+      var dis = row.insertCell(3);
+      str.innerHTML = "<font color='red'>No fault coordinates found.</font>";
+      own.innerHTML = "NA";
+      sta.innerHTML =
+        document.getElementById("stationSelect").options[
+          document.getElementById("stationSelect").selectedIndex
+        ].text;
+      dis.innerHTML = document.getElementById("faultDistance").value;
+      processNextBookmark();
+    }
+    return "";
   }
 
   function cleanFaultCoords(faultCoords) {
-    for (let c = faultCoords.length - 1; c >= 0; c--) {
+    for (c = faultCoords.length - 1; c >= 0; c--) {
       //if null clear it out
       if (faultCoords[c].length == 0) {
         faultCoords.splice(c, 1);
       }
     }
+  }
+
+  function getSegmentEndPoints2(lineGeometries) {
+    var startEndVal = [];
+
+    var i = 0;
+    //look for segment endpoints based on line geometry
+    for (let ln in lineGeometries) {
+      for (let pth in lineGeometries[ln].paths) {
+        var lenPaths = lineGeometries[ln].paths[pth].length - 1;
+        var startPt = lineGeometries[ln].paths[pth][0];
+        var endPt = lineGeometries[ln].paths[pth][lenPaths];
+
+        var val = {
+          id: i,
+          line: ln,
+          path: pth,
+          startPt: startPt,
+          endPt: endPt,
+          neighbors: null,
+        };
+        i++;
+        startEndVal.push(val);
+      }
+    }
+
+    return startEndVal;
   }
 
   function getSegmentEndPoints(lineGeometries) {
@@ -2497,39 +2632,67 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
       }
 
       //check for self intersections
-    //   let lnn = parseInt(ln);
-    //   if (lnn < lineGeometries.length - 1) {
-    //     var segment1 = new Polyline({
-    //       paths: lineGeometries[ln].paths,
-    //       spatialReference: mapSpatialReference
-    //     });
-        
-    //     for (let j = lnn+1; j < lineGeometries.length; j++) {
-    //       var segment2 = new Polyline({
-    //         paths: lineGeometries[lnn +1].paths,
-    //         spatialReference: mapSpatialReference
-    //       });
-    
-    //       var intersections = geometryEngine.intersectLinesToPoints(segment1, segment2);
-    //       intersections.forEach(function(intersection) {
-    //         var intPt = [intersection.x, intersection.y];
-    //         var val = {
-    //           id: i,
-    //           line: ln,
-    //           path: '0',
-    //           startPt: segment1.paths[0][0],
-    //           endPt: intPt,
-    //           neighbors: null,
-    //         };
-    //         i++;
-    //         startEndVal.push(val);    
-    //       });
-    //     }
-    //   }
+      var segment1 = new Polyline({
+        paths: lineGeometries[ln].paths,
+        spatialReference: mapSpatialReference
+      });
+      
+      var segment2 = new Polyline({
+        paths: lineGeometries[parseInt(ln) +1].paths,
+        spatialReference: mapSpatialReference
+      });
+
+      var intersections = geometryEngine.intersects(segment1, segment2);
+      intersections.forEach(function(intersection) {
+        var intPt = [intersection.longitude, intersection.latitude];
+        var val = {
+          id: i,
+          line: ln,
+          path: 0,
+          startPt: polyline.paths[0][0],
+          endPt: intPt,
+          neighbors: null,
+        };
+        i++;
+        startEndVal.push(val);
+
+
+      });
     }
 
     return startEndVal;
   }
+
+  function findSelfIntersections(polyline) {
+    const paths = polyline.paths[0];
+    const intersections = [];
+
+    for (let i = 0; i < paths.length - 1; i++) {
+      const segment1 = new Polyline({
+        paths: [[paths[i], paths[i + 1]]]
+      });
+
+      for (let j = i + 2; j < paths.length - 1; j++) {
+        // Skip adjacent segments
+        if (j === i + 1) continue;
+
+        const segment2 = new Polyline({
+          paths: [[paths[j], paths[j + 1]]]
+        });
+
+        const intersection = geometryEngine.intersect(segment1, segment2);
+        if (intersection) {
+          intersections.push(intersection);
+        }
+      }
+    }
+
+    return intersections;
+  }
+
+
+
+
 
   function getNeighbors(lineEnds) {
     //loop through each of the lines looking for neighbors
@@ -2589,7 +2752,6 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
     var closestLine = 0;
     var closestPath = 0;
 	  var first=true;
-    var id;
 
     //loop through line line ends, determine which end of which path is the start location
 
@@ -2767,7 +2929,7 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
     var ft;
     var fltPts = [];
 
-    for (let pt in faultCoords) {
+    for (pt in faultCoords) {
       var newpt = getPoint(faultCoords[pt][0][0], faultCoords[pt][0][1]);
 
       ft = new Graphic({
@@ -2825,7 +2987,7 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
       //Used to determine if we've already plotted a bus node
       let uniqueNameArray = Array.from(allUniqueNames);
       
-      for(let pt in csvData) {
+      for(pt in csvData) {
         var aovAttributes = csvData[pt];
 
         //Plot the reference bus
@@ -2941,7 +3103,7 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
       outSpatialReference: mapSpatialReference, //needs to be double checked the spatial reference 3/15/2022
     });
 
-    var nearestStructures = gsvc.buffer(gsvcURL, params).then(function (faultPoints) {
+    var nearestStructures = gsvc.buffer(params).then(function (faultPoints) {
       faultPoint = faultPoints[0];
       getFltStructures(faultPoint);
     });
@@ -3045,7 +3207,7 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
       });
 
       gsvc
-        .buffer(gsvcURL, params)
+        .buffer(params)
         .then(function (linebuffers) {
           var newlb = geometryEngine.generalize(
             linebuffers[0],
@@ -3065,7 +3227,7 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
           return linebuffers;
         })
         .then(function (linebuffers) {
-          let lineBuffer = linebuffers;
+          lineBuffer = linebuffers;
           maxDiff = parseInt(document.getElementById("timewindow").value) / 1000;
 
           //Split on VAPI variable here
@@ -3782,13 +3944,13 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
       .getElementById("resultstblltg")
       .getElementsByTagName("tbody")[0];
 
-    for (let pt in ltgPoints) {
+    for (pt in ltgPoints) {
       var ltgpoint = new Point(ltgPoints[pt]["lon"], ltgPoints[pt]["lat"], {
         wkid: lightningPlotSpatialReference,
       });
       var ltgattr = ltgPoints[pt];
 
-      let ltg = new Graphic({
+      ltg = new Graphic({
         geometry: ltgpoint,
         symbol: ltgSymbol,
         attributes: ltgattr,
@@ -3796,12 +3958,12 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
       });
       ltgLayer.add(ltg);
 
-      let ltgid = new TextSymbol({
+      ltgid = new TextSymbol({
         text: ltgattr["time"] + ", " + ltgattr["signal"] + " kA",
         xoffset: 70,
         yoffset: -3,
       });
-      let ltglbl = new Graphic(ltgpoint, ltgid);
+      ltglbl = new Graphic(ltgpoint, ltgid);
       ltgLayer.add(ltglbl);
 
       var row = tbl.insertRow(tbl.rows.length);
@@ -3842,13 +4004,13 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
       getOutput();
     }
   }
-
+  var locator = new Locator(locatorURL);
   $("#ltgAddress").autocomplete({
     source: function (request, response) {
       const params = {
         text: request.term, // Suggestion text
       };
-      locator.suggestLocations(locatorURL, params).then((data) => {
+      locator.suggestLocations(params).then((data) => {
         // Show a list of the suggestions
         var formattedData = data.map((d) => {
           return {
@@ -3865,7 +4027,7 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
       var item = ui.item;
       var address = { singleLine: item.value };
       var newaddress = { address: address, magicKey: item.Magickey };
-      locator.addressToLocations(locatorURL, newaddress).then((results) => {
+      locator.addressToLocations(newaddress).then((results) => {
         if (results.length > 0) {
           var lat = document.getElementById("ltgLat");
           var lon = document.getElementById("ltgLon");
@@ -3875,7 +4037,7 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
       });
     },
   });
-
+});
 
 $(document).ready(function () {
   checkCookie();
