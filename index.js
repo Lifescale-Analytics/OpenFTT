@@ -198,7 +198,6 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
   var loader = $("#loader");
   var previousLineIndex = -1;
   var eventTimeFrame = 24;
-  var selectedStationName;
 
 
   //change color for multi-endied fault location
@@ -2059,7 +2058,6 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
       stationGeometries = null;
       structureGeometries = null;
       stationList.length = 0;
-      selectedStationName = "";
     }
   }
 
@@ -2316,40 +2314,100 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
 
   }
 
-  function locateFaultPointsOnLine(totalDistance, currentDistance, lineIndex, startIndex, intersections) {
+  function locateFaultPointsOnLine(totalDistance, currentDistance, lineIndex, startIndex) {
     let currentLine = lineGeometries[lineIndex];
     let paths = []
     if (startIndex !== currentLine.paths[0].length - 1) paths.push(currentLine.paths[0].slice(startIndex));
     if (startIndex !== 0) paths.push(currentLine.paths[0].slice(0, startIndex + 1).reverse());
     paths.forEach( path => {
         let currentPathDistance;
-        for (let i = 0; i < path.length; i++) {
-            if (i == 0 ) currentPathDistance = currentDistance;
-            if (i > 0) {
-                let lastPoint = getWMPoint(path[i - 1]);
-                let nextPoint = getWMPoint(path[i]);
-                let intersection = intersections.find(intersection => path[i][0] === intersection.point.x && path[i][1] === intersection.point.y)
-                if (intersection) {
-                    let newLineIndex = intersection.lines.find(line => line != lineIndex);
-                    let newStartIndex = lineGeometries[newLineIndex].paths[0].find(vertex => vertex[0] === intersection.point.x && vertex[1] === intersection.point.y)
-                    locateFaultPointsOnLine(totalDistance, currentPathDistance, newLineIndex, newStartIndex, intersections);
+        for (let pathIndex = 0; pathIndex < path.length - 1; pathIndex++) {
+            if (pathIndex == 0) currentPathDistance = currentDistance;
+            let currentPoint = getWMPoint(path[pathIndex]);
+            let nextPoint = getWMPoint(path[pathIndex + 1]);
+            let intersection = checkForIntersectionAlongPath(currentPoint, nextPoint, lineIndex);
+            if (intersection) {
+                let intersectionIsNew = !isAlreadyFoundIntersection(intersection);
+                if (intersectionIsNew) {
+                    console.log("intersection: ", intersection);
+                    lineIntersections.push(intersection);
+                    locateFaultPointsOnLine(totalDistance, currentPathDistance, intersection.lineIndex, intersection.newStartPathIndex);
                 }
-                let distanceToNextStructure = geometryEngine.distance(lastPoint, nextPoint, "miles");
-                if (currentPathDistance + distanceToNextStructure <= totalDistance) {
-                    currentPathDistance += distanceToNextStructure;
-                    if (i == path.length - 1) {
-                        plotFaultPointOnMap(nextPoint.x, nextPoint.y);
-                    }
-                } else {
-                    let distanceFromTotal = totalDistance - currentPathDistance;
-                    const faultPoint = Math.abs(totalDistance - currentPathDistance) < Math.abs(distanceToNextStructure - distanceFromTotal) ? lastPoint : nextPoint;
-                    console.log("fault point: " , faultPoint);
-                    plotFaultPointOnMap(faultPoint.x, faultPoint.y);
+            }
+            let distanceToNextStructure = geometryEngine.distance(currentPoint, nextPoint, "miles");
+            if (currentPathDistance + distanceToNextStructure < totalDistance) {
+                currentPathDistance += distanceToNextStructure;
+                if (pathIndex + 1 == path.length - 1) {
+                    console.log("The line is too short for the distance entered.");
                     break;
                 }
+            } else {
+                let distanceFromTotal = totalDistance - currentPathDistance;
+                let halfDistanceFromNextStructure = distanceToNextStructure / 2;
+                const faultPoint = distanceFromTotal > halfDistanceFromNextStructure ? nextPoint : currentPoint;
+                plotFaultPointOnMap(faultPoint.x, faultPoint.y);
+                break;
             }
         }
     });
+  }
+
+  function checkForIntersectionAlongPath(currentPoint, nextPoint, currentLineIndex) {
+    const currentLineSegment = getPolyline([currentPoint.x, currentPoint.y],[nextPoint.x, nextPoint.y]);
+    for (let i = 0; i < lineGeometries.length; i++) {
+        let line = lineGeometries[i];
+        if (i != currentLineIndex) {
+            let otherLine = line.paths[0];
+            for (let j = 0; j < otherLine.length - 1; j++) {
+                let otherLineCurrentPoint = otherLine[j];
+                let otherLineNextPoint = otherLine[j + 1];
+                let vertexIsShared = pointsAreEqual([nextPoint.x, nextPoint.y],[otherLineCurrentPoint[0],otherLineCurrentPoint[1]]);
+                let otherLineSegment = getPolyline([otherLineCurrentPoint[0], otherLineCurrentPoint[1]], [otherLineNextPoint[0], otherLineNextPoint[1]]);
+                let intersection = geometryEngine.intersectLinesToPoints(currentLineSegment, otherLineSegment);
+                if (intersection?.length) {
+                    return {
+                        point: intersection,
+                        lineIndex: i,
+                        newStartPathIndex: vertexIsShared ? j : j + 1
+                    };
+                }
+            }
+        }
+    }
+  }
+
+  let lineIntersections = [];
+
+  function isAlreadyFoundIntersection(intersection) {
+    let intersectionAlreadyExists = lineIntersections.some( foundIntersection => {
+        return pointsAreEqual(
+            [foundIntersection.point[0].x, foundIntersection.point[0].y],
+            [intersection.point[0].x, intersection.point[0].y]
+        );
+    });
+    return intersectionAlreadyExists;
+  }
+
+  function getPolyline(point1, point2, ref = 3857) {
+    return new Polyline({
+        paths: [ [point1[0], point1[1]], [point2[0], point2[1]] ],
+        spatialReference: { wkid: ref }
+    });
+  }
+
+  function getWMPoint(coordinate, ref = 3857) {
+    return new Point({
+        x: coordinate[0],
+        y: coordinate[1],
+        spatialReference: { wkid: ref }
+    });
+  }
+
+  function pointsAreEqual(path1, path2) {
+    const path1key = `${path1[0].toFixed(6)}_${path1[1].toFixed(6)}`;
+    const path2key = `${path2[0].toFixed(6)}_${path2[1].toFixed(6)}`;
+    const pointsEqual = path1key === path2key;
+    return pointsEqual;
   }
 
   function plotFaultPointOnMap(x, y) {
@@ -2361,31 +2419,25 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
     );
   }
 
-  function getWMPoint(coordinate) {
-    return new Point({
-        x: coordinate[0],
-        y: coordinate[1],
-        spatialReference: { wkid: 3857 }
-    });
-  }
-
   function getFaultLocations(distance, endCoordinate = null) {
     
-    const startStructure = locateNearestStructureToStation();
-    const intersectionPoints = findPointsOfIntersection();
-    locateFaultPointsOnLine(
-        distance,
-        startStructure.nearestVertex.distance / 1609.34,
-        startStructure.lineIndex,
-        startStructure.pathIndex,
-        intersectionPoints
-    );
-    
-    console.log("distance: ", distance);
-    console.log("line geometries: ", lineGeometries);
-    console.log("start station geometries: ", startStationGeometries);
-    console.log("nearest structure: ", startStructure);
-    console.log("intersection points: ", intersectionPoints);
+    try {
+        const startStructure = locateNearestStructureToStation();
+        locateFaultPointsOnLine(
+            distance,
+            startStructure.nearestVertex.distance / 1609.34,
+            startStructure.lineIndex,
+            startStructure.pathIndex
+        );
+        console.log("distance: ", distance);
+        console.log("line geometries: ", lineGeometries);
+        console.log("start station geometries: ", startStationGeometries);
+        console.log("nearest structure: ", startStructure);
+    } catch (error) {
+        console.log(error);        
+    } finally {
+        lineIntersections = [];
+    }
 
     // //get endpoints for all the lines/paths
     // var segmentEndpoints = getSegmentEndPoints(lineGeometries);
