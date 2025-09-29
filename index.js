@@ -610,81 +610,183 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
     return div;
   }
 
-  function distanceToStation2(feature) {
-    var div = document.createElement("div");
-    var lso = document.getElementById("lineSelect");
-    var lname = lso.options[lso.selectedIndex].text;
-    var output = "";
-    output += "<B>Via Line: " + lname + "</B><BR />";
-
-    var poi = new Point({
-        longitude: feature.graphic.geometry.longitude,
-        latitude: feature.graphic.geometry.latitude,
-        spatialReference: { wkid: mapSpatialReference }
-    });
-
-    const endpoints = startStationGeometries.map(station => {
-        station
-    })
-  }
-
-//   const startStructure = locateNearestStructureToStation();
-
+  let substationEndpoints = [];
+  let lineTraceResults = [];
   function distanceToStation(feature) {
-    var div = document.createElement("div");
-    var lso = document.getElementById("lineSelect");
-    var lname = lso.options[lso.selectedIndex].text;
-    var output = "";
-    output += "<B>Via Line: " + lname + "</B><BR />";
+    try {
+        var div = document.createElement("div");
+        var lso = document.getElementById("lineSelect");
+        var lname = lso.options[lso.selectedIndex].text;
+        var output = "";
+        output += "<B>Via Line: " + lname + "</B><BR />";
 
-    //try{
-        //var strPt = new Point(feature.graphic.attributes.LONGITUDE, feature.graphic.attributes.LATITUDE,{wkid: mapSpatialReference});
-      var poi = new Point({
-          longitude: feature.graphic.geometry.longitude,
-          latitude: feature.graphic.geometry.latitude,
-          spatialReference: { wkid: mapSpatialReference }
-      });
-      //var poi = getPoint(feature.graphic.geometry.longitude, feature.graphic.geometry.latitude);
-
-      //identify the line vertex with the smallest distance from structure
-      var voi;
-      var smallestvoiddist;
-      for (i = 0; i < lineGeometries.length; i++) {
-        var newline = new Polyline({
-          paths: lineGeometries[i].paths,
-          spatialReference: { wkid: mapSpatialReference },
+        var poi = new Point({
+            longitude: feature.graphic.geometry.longitude,
+            latitude: feature.graphic.geometry.latitude,
+            spatialReference: { wkid: mapSpatialReference }
         });
-        var nve = geometryEngine.nearestVertex(newline, poi);
-      //initialize voi and smallestvoidist.
-      if (i==0) {
-        voi=nve;
-        smallestvoiddist = nve.distance;
-      }
-        if (nve.distance < smallestvoiddist) {
-          voi = nve;
-          smallestvoiddist = nve.distance;
+
+        substationEndpoints = stationGeometries.map(stationGeometry => {
+            let substation = stationList.find(stationDetails => 
+                stationGeometry.latitude == stationDetails.latitude &&
+                stationGeometry.longitude == stationDetails.longitude
+            );
+            return {
+                structure: locateNearestStructureToStation(stationGeometry),
+                name: substation.name
+            };
+        });
+
+        let closestLine = getLineOfAPoint(poi);
+        let startIndex = closestLine.vertex;
+        findDistanceToSubstations(0, closestLine.lineIndex, startIndex)
+
+        lineTraceResults.sort((a, b) => a.name.localeCompare(b.name));
+        lineTraceResults.forEach(lineTrace => {
+            var out = lineTrace.distance.toFixed(2) + " to " + lineTrace.name + "<br />";
+            output += out
+        })
+
+        const straightLineResults = getStraightLineDistances(poi);
+        straightLineResults.sort((a, b) => a.name.localeCompare(b.name));
+        output += "<br /><b>Via Straight line:</b> <br />";
+        straightLineResults.forEach(straightLine => {
+            var out = straightLine.distance.toFixed(2) + " to " + straightLine.name + "<br />";
+            output += out
+        })
+
+        output = output.replace(/,/gi, "");
+        div.innerHTML = output;
+        return div;
+
+    } catch (error) {
+        console.error(error);   
+    } finally {
+        substationEndpoints = [];
+        lineIntersections = [];
+        lineTraceResults = [];
+    }
+
+  }
+
+  function findDistanceToSubstations(currentDistance, lineIndex, startIndex) {
+    let currentLine = lineGeometries[lineIndex];
+    let paths = [];
+    if (startIndex !== currentLine.paths[0].length - 1) paths.push(currentLine.paths[0].slice(startIndex));
+    if (startIndex !== 0) paths.push(currentLine.paths[0].slice(0, startIndex + 1).reverse());
+    for (const path of paths) {
+        let currentPathDistance = currentDistance;
+        for (let pathIndex = 0; pathIndex < path.length - 1; pathIndex++) {
+            let currentPoint = getWMPoint(path[pathIndex]);
+            let nextPoint = getWMPoint(path[pathIndex + 1]);
+            let intersection = checkForIntersectionAlongPath(currentPoint, nextPoint, lineIndex);
+            if (intersection) {
+                let intersectionIsNew = !isAlreadyFoundIntersection(intersection);
+                if (intersectionIsNew) {
+                    lineIntersections.push(intersection);
+                    findDistanceToSubstations(currentPathDistance, intersection.lineIndex, intersection.newStartPathIndex);
+                }
+            }
+            let substation;
+            substation = substationEndpoints.find(endpoint => pointsAreEqual([endpoint.structure.nearestVertex.coordinate.x,endpoint.structure.nearestVertex.coordinate.y],[currentPoint.x,currentPoint.y]));
+            if (!substation && pathIndex + 1 == path.length - 1) {
+                substation = substationEndpoints.find(endpoint => pointsAreEqual([endpoint.structure.nearestVertex.coordinate.x,endpoint.structure.nearestVertex.coordinate.y],[nextPoint.x,nextPoint.y]));
+            }
+            if (substation && !lineTraceResults.some(endpoint => endpoint.name == substation.name)) {
+                lineTraceResults.push({
+                    name: substation.name,
+                    distance: currentPathDistance + (substation.structure.nearestVertex.distance / 1609.34)
+                });
+                continue;
+            } else currentPathDistance += geometryEngine.distance(currentPoint, nextPoint, "miles");
         }
-      }
+    }
+  }
 
-      var distances = distToStation(voi);
-      output += distances.map(function (p) {
-        return p;
-      });
+  function getStraightLineDistances(startPoint) {
+    let results = [];
+    for (const endpoint of substationEndpoints) {
+        let name = endpoint.name;
+        let distance = geometryEngine.distance(startPoint, endpoint.structure.nearestVertex.coordinate, "miles");
+        results.push({name, distance});
+    }
+    return results;
+  }
 
-   //} catch (e) { 
-   //   console.log("error with line calc: " + e.toString());
-    //}
-
-    var sldistance = sldisttostation(poi);
-    output += "<br /><b>Via Straight line:</b> <br />";
-    output += sldistance.map(function (p) {
-      return p;
+  function getLineOfAPoint(point) {
+    let lineOptions = [];
+    lineGeometries.forEach((line, index) => {
+        let nearestVertex = geometryEngine.nearestCoordinate(line, point);
+        let vertexIndex = line.paths[0].findIndex(path => path[0].toFixed(0) == nearestVertex.coordinate.x.toFixed(0) && path[1].toFixed(0) == nearestVertex.coordinate.y.toFixed(0));
+        lineOptions.push({
+            lineIndex: index,
+            distance: nearestVertex.distance / 1609.34,
+            vertex: vertexIndex
+        })
     });
 
-    output = output.replace(/,/gi, "");
-    div.innerHTML = output;
-    return div;
+    const closest = lineOptions.reduce((minObj, currentObj) => {
+        return currentObj.distance < minObj.distance ? currentObj : minObj;
+    });
+
+    return closest;
   }
+
+//   function distanceToStation(feature) {
+//     var div = document.createElement("div");
+//     var lso = document.getElementById("lineSelect");
+//     var lname = lso.options[lso.selectedIndex].text;
+//     var output = "";
+//     output += "<B>Via Line: " + lname + "</B><BR />";
+
+//     //try{
+//         //var strPt = new Point(feature.graphic.attributes.LONGITUDE, feature.graphic.attributes.LATITUDE,{wkid: mapSpatialReference});
+//       var poi = new Point({
+//           longitude: feature.graphic.geometry.longitude,
+//           latitude: feature.graphic.geometry.latitude,
+//           spatialReference: { wkid: mapSpatialReference }
+//       });
+//       //var poi = getPoint(feature.graphic.geometry.longitude, feature.graphic.geometry.latitude);
+
+//       //identify the line vertex with the smallest distance from structure
+//       var voi;
+//       var smallestvoiddist;
+//       for (i = 0; i < lineGeometries.length; i++) {
+//         var newline = new Polyline({
+//           paths: lineGeometries[i].paths,
+//           spatialReference: { wkid: mapSpatialReference },
+//         });
+//         var nve = geometryEngine.nearestVertex(newline, poi);
+//       //initialize voi and smallestvoidist.
+//       if (i==0) {
+//         voi=nve;
+//         smallestvoiddist = nve.distance;
+//       }
+//         if (nve.distance < smallestvoiddist) {
+//           voi = nve;
+//           smallestvoiddist = nve.distance;
+//         }
+//       }
+
+//       var distances = distToStation(voi);
+//       output += distances.map(function (p) {
+//         return p;
+//       });
+
+//    //} catch (e) { 
+//    //   console.log("error with line calc: " + e.toString());
+//     //}
+
+//     var sldistance = sldisttostation(poi);
+//     output += "<br /><b>Via Straight line:</b> <br />";
+//     output += sldistance.map(function (p) {
+//       return p;
+//     });
+
+//     output = output.replace(/,/gi, "");
+//     div.innerHTML = output;
+//     return div;
+//   }
 
   //get straight line distance, good for sanity checking may disable in final release.
   function sldisttostation(poi) {
@@ -2264,7 +2366,7 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
       searchParams.toString();
   }
 
-  function locateNearestStructureToStation() {
+  function locateNearestStructureToStation(startStation) {
         const allVertices = [];
         for (const line of lineGeometries) {
             for (const path of line.paths) {
@@ -2278,26 +2380,11 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
             spatialReference: { wkid: mapSpatialReference }
         });
         const stationPoint = new Point({
-            longitude: startStationGeometries[0].longitude,
-            latitude: startStationGeometries[0].latitude,
+            longitude: startStation.longitude,
+            latitude: startStation.latitude,
             spatialReference: { wkid: mapSpatialReference }
         });
         const nearestVertex = proximityOperator.getNearestVertex(mergedPolyline, stationPoint);
-        let color = getColor();
-        faultsLayer.add(
-            new Graphic({
-                geometry: getPoint(nearestVertex.coordinate.x, nearestVertex.coordinate.y),
-                symbol: {
-                    type: "simple-marker",
-                    style: "circle",
-                    color: color,
-                    outline: {
-                        color: color
-                    },
-                    size: 8
-                }
-            })
-        );
         let lineIndex, pathIndex;
         lineGeometries.forEach( (line, index) => {
             let vertex = line.paths[0].findIndex( path => path[0] == nearestVertex.coordinate.x && path[1] == nearestVertex.coordinate.y);
@@ -2311,7 +2398,7 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
 
   function traceLinesForFaultPoints(totalDistance, currentDistance, lineIndex, startIndex) {
     let currentLine = lineGeometries[lineIndex];
-    let paths = []
+    let paths = [];
     if (startIndex !== currentLine.paths[0].length - 1) paths.push(currentLine.paths[0].slice(startIndex));
     if (startIndex !== 0) paths.push(currentLine.paths[0].slice(0, startIndex + 1).reverse());
     paths.forEach( path => {
@@ -2324,7 +2411,6 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
             if (intersection) {
                 let intersectionIsNew = !isAlreadyFoundIntersection(intersection);
                 if (intersectionIsNew) {
-                    console.log("intersection: ", intersection);
                     lineIntersections.push(intersection);
                     traceLinesForFaultPoints(totalDistance, currentPathDistance, intersection.lineIndex, intersection.newStartPathIndex);
                 }
@@ -2396,9 +2482,27 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
     });
   }
 
+  function plotStartPoint(x, y) {
+    let color = getColor();
+    faultsLayer.add(
+        new Graphic({
+            geometry: getPoint(x, y),
+            symbol: {
+                type: "simple-marker",
+                style: "circle",
+                color: color,
+                outline: {
+                    color: color
+                },
+                size: 8
+            }
+        })
+    );
+  }
+
   function pointsAreEqual(path1, path2) {
-    const path1key = `${path1[0].toFixed(6)}_${path1[1].toFixed(6)}`;
-    const path2key = `${path2[0].toFixed(6)}_${path2[1].toFixed(6)}`;
+    const path1key = `${path1[0].toFixed(0)}_${path1[1].toFixed(0)}`;
+    const path2key = `${path2[0].toFixed(0)}_${path2[1].toFixed(0)}`;
     const pointsEqual = path1key === path2key;
     return pointsEqual;
   }
@@ -2408,7 +2512,8 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
   let faultPoints = [];
   function getFaultLocations(distance, endCoordinate = null) {
     try {
-        const startStructure = locateNearestStructureToStation();
+        const startStructure = locateNearestStructureToStation(startStationGeometries[0]);
+        plotStartPoint(startStructure.nearestVertex.coordinate.x, startStructure.nearestVertex.coordinate.y);
         traceLinesForFaultPoints(
             distance,
             startStructure.nearestVertex.distance / 1609.34,
@@ -2416,18 +2521,15 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
             startStructure.pathIndex
         );
         plotFaultsOnMap(faultPoints);
-        // faultPoints.forEach(point => plotFaultPointOnMap(point.x, point.y));
-        console.log("distance: ", distance);
-        console.log("line geometries: ", lineGeometries);
-        console.log("start station geometries: ", startStationGeometries);
-        console.log("nearest structure: ", startStructure);
     } catch (error) {
-        console.log(error);        
+        console.error(error);        
     } finally {
         lineIntersections = [];
         faultPoints = [];
     }
+  }
 
+  // function getFaultLocations(distance, endCoordinate = null) {
     // //get endpoints for all the lines/paths
     // var segmentEndpoints = getSegmentEndPoints(lineGeometries);
     // if (endCoordinate !== null) {
@@ -2502,7 +2604,7 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
     //   processNextBookmark();
     // }
     // return "";
-  }
+//   }
 
   function cleanFaultCoords(faultCoords) {
     for (let c = faultCoords.length - 1; c >= 0; c--) {
