@@ -199,14 +199,20 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
   var previousLineIndex = -1;
   var eventTimeFrame = 24;
 
-
-  //change color for multi-endied fault location
-  //var faultLocID = 0;
   var colorWays = [
-    [128, 0, 38, 1],
-    [252, 78, 42, 1],
-    [14, 115, 73, 1],
+    [94, 6, 24, 1],
+    [189, 0, 38, 1],
+    [240, 59, 32, 1],
+    [253, 141, 60, 1],
+    [254, 178, 76, 1]
   ];
+
+
+  function getColor(IDOveride = null) {
+    if (IDOveride) faultLocID = IDOveride;
+    else faultLocID = faultLocID <= colorWays.length - 1 ? faultLocID++ : faultLocID = 0;
+    return colorWays[faultLocID];
+  }
 
   //Setup AOV Legend table
   // n color values corresponds to n-1 breakpoints
@@ -375,8 +381,8 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
     return symbol;
   }
 
-  function startStationSymbol(faultLocID) {
-    var colorWayVal = colorWays[faultLocID];
+  function startStationSymbol(faultLocID = null) {
+    var colorWayVal = getColor(faultLocID);
     var myStartStationSymbol = {
       type: "simple-marker",
       style: "diamond",
@@ -388,8 +394,8 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
     return myStartStationSymbol;
   }
 
-  function faultLocationSymbol(faultLocID) {
-    var colorWayVal = colorWays[faultLocID];
+  function faultLocationSymbol(faultLocID = null) {
+    var colorWayVal = getColor(faultLocID);
     var myFaultLocationSymbol = {
       type: "simple-marker",
       style: "x",
@@ -603,6 +609,26 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
     div.innerHTML = output;
     return div;
   }
+
+  function distanceToStation2(feature) {
+    var div = document.createElement("div");
+    var lso = document.getElementById("lineSelect");
+    var lname = lso.options[lso.selectedIndex].text;
+    var output = "";
+    output += "<B>Via Line: " + lname + "</B><BR />";
+
+    var poi = new Point({
+        longitude: feature.graphic.geometry.longitude,
+        latitude: feature.graphic.geometry.latitude,
+        spatialReference: { wkid: mapSpatialReference }
+    });
+
+    const endpoints = startStationGeometries.map(station => {
+        station
+    })
+  }
+
+//   const startStructure = locateNearestStructureToStation();
 
   function distanceToStation(feature) {
     var div = document.createElement("div");
@@ -2257,16 +2283,16 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
             spatialReference: { wkid: mapSpatialReference }
         });
         const nearestVertex = proximityOperator.getNearestVertex(mergedPolyline, stationPoint);
+        let color = getColor();
         faultsLayer.add(
             new Graphic({
                 geometry: getPoint(nearestVertex.coordinate.x, nearestVertex.coordinate.y),
                 symbol: {
                     type: "simple-marker",
                     style: "circle",
-                    color: "green",
+                    color: color,
                     outline: {
-                        width: 1.25,
-                        color: "darkgreen"
+                        color: color
                     },
                     size: 8
                 }
@@ -2283,38 +2309,7 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
         return { lineIndex, pathIndex, nearestVertex};
   }
 
-  function findPointsOfIntersection() {
-    
-    const allIntersections = [];
-
-    for (let i = 0; i < lineGeometries.length; i++) {
-        for (let j = i + 1; j < lineGeometries.length; j++) {
-            const intersections = geometryEngine.intersectLinesToPoints(lineGeometries[i], lineGeometries[j]);
-            if (intersections && intersections.length > 0) {
-                allIntersections.push({
-                    point: intersections,
-                    lines: [i, j]
-                });
-            }
-        }
-    }
-
-    const uniqueIntersections = [];
-    const seen = new Set();
-
-    allIntersections.forEach( intersection => {
-        const key = `${intersection.point[0].x.toFixed(6)}_${intersection.point[0].y.toFixed(6)}`; // rounding helps with floating-point precision
-        if (!seen.has(key)) {
-            seen.add(key);
-            uniqueIntersections.push(intersection);
-        }
-    });
-
-    return uniqueIntersections;
-
-  }
-
-  function locateFaultPointsOnLine(totalDistance, currentDistance, lineIndex, startIndex) {
+  function traceLinesForFaultPoints(totalDistance, currentDistance, lineIndex, startIndex) {
     let currentLine = lineGeometries[lineIndex];
     let paths = []
     if (startIndex !== currentLine.paths[0].length - 1) paths.push(currentLine.paths[0].slice(startIndex));
@@ -2331,7 +2326,7 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
                 if (intersectionIsNew) {
                     console.log("intersection: ", intersection);
                     lineIntersections.push(intersection);
-                    locateFaultPointsOnLine(totalDistance, currentPathDistance, intersection.lineIndex, intersection.newStartPathIndex);
+                    traceLinesForFaultPoints(totalDistance, currentPathDistance, intersection.lineIndex, intersection.newStartPathIndex);
                 }
             }
             let distanceToNextStructure = geometryEngine.distance(currentPoint, nextPoint, "miles");
@@ -2345,7 +2340,7 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
                 let distanceFromTotal = totalDistance - currentPathDistance;
                 let halfDistanceFromNextStructure = distanceToNextStructure / 2;
                 const faultPoint = distanceFromTotal > halfDistanceFromNextStructure ? nextPoint : currentPoint;
-                plotFaultPointOnMap(faultPoint.x, faultPoint.y);
+                faultPoints.push(faultPoint);
                 break;
             }
         }
@@ -2375,8 +2370,6 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
         }
     }
   }
-
-  let lineIntersections = [];
 
   function isAlreadyFoundIntersection(intersection) {
     let intersectionAlreadyExists = lineIntersections.some( foundIntersection => {
@@ -2410,25 +2403,20 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
     return pointsEqual;
   }
 
-  function plotFaultPointOnMap(x, y) {
-    faultsLayer.add(
-        new Graphic({
-            geometry: getPoint(x, y),
-            symbol: faultLocationSymbol(faultLocID)
-        })
-    );
-  }
 
+  let lineIntersections = [];
+  let faultPoints = [];
   function getFaultLocations(distance, endCoordinate = null) {
-    
     try {
         const startStructure = locateNearestStructureToStation();
-        locateFaultPointsOnLine(
+        traceLinesForFaultPoints(
             distance,
             startStructure.nearestVertex.distance / 1609.34,
             startStructure.lineIndex,
             startStructure.pathIndex
         );
+        plotFaultsOnMap(faultPoints);
+        // faultPoints.forEach(point => plotFaultPointOnMap(point.x, point.y));
         console.log("distance: ", distance);
         console.log("line geometries: ", lineGeometries);
         console.log("start station geometries: ", startStationGeometries);
@@ -2437,6 +2425,7 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
         console.log(error);        
     } finally {
         lineIntersections = [];
+        faultPoints = [];
     }
 
     // //get endpoints for all the lines/paths
@@ -2816,20 +2805,14 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
   }
 
   function plotFaultsOnMap(faultCoords) {
-    var ft;
-    var fltPts = [];
-
-    for (let pt in faultCoords) {
-      var newpt = getPoint(faultCoords[pt][0][0], faultCoords[pt][0][1]);
-
-      ft = new Graphic({
-        geometry: newpt,
-        symbol: faultLocationSymbol(faultLocID),
-      });
-      faultsLayer.add(ft);
-      fltPts.push(newpt);
-    }
-    return fltPts;
+    faultCoords.forEach(fault => {
+        faultsLayer.add(
+            new Graphic({
+                geometry: getPoint(fault.x, fault.y),
+                symbol: faultLocationSymbol(faultLocID)
+            })
+        );
+    });
   }
 
   function plotAoVOnMap(csvData) {
@@ -3035,7 +3018,7 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
       getInfoDivMinHeight();
 
       for (var i = 0; i < fltVals.length; i++) {
-        var myColor = JSON.stringify(colorWays[faultLocID]);
+        var myColor = JSON.stringify(getColor(faultLocID));
         myColor = myColor.replace("[", "");
         myColor = myColor.replace("]", "");
         var tbl = document
