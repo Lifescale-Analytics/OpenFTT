@@ -3317,6 +3317,7 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
         const attributes = feature.attributes;
         let evttime = moment(attributes.EVENTCENTRALTIME).tz("GMT").add((attributes.Nanoseconds / 1e6), 'milliseconds').format("YYYY-MM-DD HH:mm:ss.SSS");
         
+        //TODO: clean this up so that it uses the config file
         ltgPoints.push({
           id: index +1,
           time: evttime,
