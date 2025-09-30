@@ -185,6 +185,7 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
     structureGeometries,
     startStationGeometries;
   var startStationName = "";
+  var startStationID;
   var defaultLineId = "";
   var defaultStationName = "";
   var stationList = [];
@@ -200,12 +201,13 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
   var eventTimeFrame = 24;
 
   var colorWays = [
-    [94, 6, 24, 1],
-    [189, 0, 38, 1],
-    [240, 59, 32, 1],
-    [253, 141, 60, 1],
-    [254, 178, 76, 1]
-  ];
+    [27, 158, 119, 1],  // #1b9e77
+    [217, 95, 2, 1],    // #d95f02
+    [231, 41, 138, 1],  // #e7298a
+    [230, 171, 2, 1],    // #e6ab02
+    [102, 166, 30, 1]  // #66a61e
+  ]
+
 
 
   function getColor(IDOveride = null) {
@@ -1645,7 +1647,7 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
   }
  
   function color2hex(color){
-		colors=color.replace("rgb","").replace("(","").replace(")","").replaceAll(" ","").split(",");
+		let colors=color.replace("rgb","").replace("(","").replace(")","").replaceAll(" ","").split(",");
 		return "#" + compToHex(parseInt(colors[0])) + compToHex(parseInt(colors[1])) + compToHex(parseInt(colors[2]));
   }
 
@@ -1692,14 +1694,14 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
         curLine +=lineheight;
         context.fillText("Nearest Structure(s):",leftmargin, curLine);
         context.font = nfont;
-        hdr = Array.from(stninfo.tHead.rows[0].cells).map(c=> c.innerText).toString();
+        let hdr = Array.from(stninfo.tHead.rows[0].cells).map(c=> c.innerText).toString();
         curLine+=lineheight;
         context.fillText(hdr,leftmargin,curLine);
         for(i=0;i<stninfo.tBodies[0].rows.length;i++){
             curLine+=lineheight;
-            color = color2hex(stninfo.tBodies[0].rows[i].cells[0].childNodes[0].style.color.toString());
+            let color = color2hex(stninfo.tBodies[0].rows[i].cells[0].childNodes[0].style.color.toString());
             context.fillStyle = color;
-            curRow = Array.from(stninfo.tBodies[0].rows[i].cells).map(c=> c.innerText).toString();
+            let curRow = Array.from(stninfo.tBodies[0].rows[i].cells).map(c=> c.innerText).toString();
             context.fillText(curRow,leftmargin,curLine);
         }
 		
@@ -1708,7 +1710,7 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
         curLine +=lineheight;
         context.fillStyle = "#000000";
         context.font=hdrfont;
-        flt = "Nearest Lightning";
+        let flt = "Nearest Lightning";
         context.fillText(flt, leftmargin, curLine);
         context.font=nfont;
         curLine +=lineheight;
@@ -2070,6 +2072,7 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
     var a = FuzzySet([defaultStationName]);
     var bestMatchScore = 0;
     var bestMatchValue = "";
+    var bestMatchName = "";
 
     var stationNames = document.getElementById("stationSelect");
     for (var i = 0; i < stationNames.options.length; i++) {
@@ -2520,7 +2523,34 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
             startStructure.lineIndex,
             startStructure.pathIndex
         );
-        plotFaultsOnMap(faultPoints);
+        if (faultPoints.length) {
+            plotFaultsOnMap(faultPoints);
+            findNearestStructures(faultPoints);
+        } else {
+            //no fault coordinates found
+            var fltresultdiv = document.getElementById("fltresults");
+            fltresultdiv.style.display = "block";
+
+            //resize info div container
+            getInfoDivMinHeight();
+
+            var tbl = document
+                .getElementById("resultstbl")
+                .getElementsByTagName("tbody")[0];
+            var row = tbl.insertRow(tbl.rows.length);
+            var str = row.insertCell(0);
+            var own = row.insertCell(1);
+            var sta = row.insertCell(2);
+            var dis = row.insertCell(3);
+            str.innerHTML = "<font color='red'>No fault coordinates found.</font>";
+            own.innerHTML = "NA";
+            sta.innerHTML =
+                document.getElementById("stationSelect").options[
+                document.getElementById("stationSelect").selectedIndex
+                ].text;
+            dis.innerHTML = document.getElementById("faultDistance").value;
+            processNextBookmark();
+        }
     } catch (error) {
         console.error(error);        
     } finally {
@@ -3079,7 +3109,7 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
     });
 
     var nearestStructures = gsvc.buffer(gsvcURL, params).then(function (faultPoints) {
-      faultPoint = faultPoints[0];
+      let faultPoint = faultPoints[0];
       getFltStructures(faultPoint);
     });
     return nearestStructures;
@@ -3213,7 +3243,7 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
             req = makeTXDpolyrequest(lineBuffer);
             rsp = sendTXDrequest(req, "evttime");
           } else if (lightningIsLayer || lightningEllipseisLayer) {
-            lightningLayerSearch("polygon",lineBuffer);
+            lightningLayerSearch("polygon", lineBuffer, "evttime");
           } 
         });
     } else {
@@ -3221,7 +3251,7 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
     }
   }
 
-  function lightningLayerSearch(reqtype, lineBuffer) {
+  function lightningLayerSearch(reqtype, lineBuffer, starttimefield) {
     var query = lightningPointLayer.createQuery();
     query.outFields = "*";
     query.spatialRelationship = "intersects";
@@ -3285,7 +3315,8 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
 
       response.features.forEach(function(feature, index) {
         const attributes = feature.attributes;
-        let evttime = moment(attributes.EVENTCENTRALTIME).tz("GMT").format("YYYY-MM-DD HH:mm:ss.SSS");
+        let evttime = moment(attributes.EVENTCENTRALTIME).tz("GMT").add((attributes.Nanoseconds / 1e6), 'milliseconds').format("YYYY-MM-DD HH:mm:ss.SSS");
+        
         ltgPoints.push({
           id: index +1,
           time: evttime,
@@ -3295,7 +3326,7 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
           smin: attributes.ELL_SMIN,
           smaj: attributes.ELL_SMAJ,
           angle: attributes.ELL_ANGLE,
-          cg: attributes.ColdToGround_Indicator,
+          cg: attributes.CloudToGround_Indicator,
           risetime: attributes.Waveform_RiseTime,
           peaktozero: attributes.Waveform_PeakToZero,
           maxrateofrise: attributes.Waveform_MaxRateOfRise,
@@ -3317,8 +3348,10 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
           id: "No Lightning Found",
           lat: "",
           lon: "",
+          cg: "",
           signal: "",
           time: "",
+          risetime: ""
         });
         var ltgtresultdiv = document.getElementById("ltgresults");
         ltgtresultdiv.style.display = "block";
@@ -3351,8 +3384,7 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
       var req = makeTXDpointrequest();
       var rsp = sendTXDrequest(req, "ltgevttime");
     } else if (lightningIsLayer || lightningEllipseisLayer) {
-      lightningLayerSearch("point",null);
-
+      lightningLayerSearch("point", null, "ltgevttime");
     } else {
       console.log("Lightning search feature not enabled");
     }
@@ -3525,6 +3557,8 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
         id: i,
         lat: ltgdata[i].geometry ? ltgdata[i].geometry.coordinates[1] : ltgdata[i].location.coordinates[1],
         lon: ltgdata[i].geometry ? ltgdata[i].geometry.coordinates[0] : ltgdata[i].location.coordinates[0],
+        cg: "",
+        risetime: "",
         signal: ltgdata[i].properties ? ltgdata[i].properties.signalStrengthKA : ltgdata[i].signalStrengthKA,
         time: curTime,
         smin: ltgdata[i].properties ? ltgdata[i].properties.ellSemiMinM : ltgdata[i].ellSemiMinM,
@@ -3542,8 +3576,10 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
         id: "No Lightning Found",
         lat: "",
         lon: "",
+        cg: "",
         signal: "",
         time: "",
+        risetime: ""
       });
       var ltgtresultdiv = document.getElementById("ltgresults");
       ltgtresultdiv.style.display = "block";
@@ -3743,11 +3779,13 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
             id: j,
             lat: curlat,
             lon: curlon,
+            cg: "",
             signal: curSig,
             time: curTime,
             smin: semiminor,
             smaj: semimajor,
             angle: angle_rad,
+            risetime: ""
           });
           j++;
         }
@@ -3760,8 +3798,10 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
           id: "No Lightning Found",
           lat: "",
           lon: "",
+          cg: "",
           signal: "",
           time: "",
+          risetime: ""
         });
         var ltgtresultdiv = document.getElementById("ltgresults");
         ltgtresultdiv.style.display = "block";
@@ -3938,18 +3978,27 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
         xoffset: 70,
         yoffset: -3,
       });
-      let ltglbl = new Graphic(ltgpoint, ltgid);
+      
+      let ltglbl = new Graphic({
+        geometry: ltgpoint,
+        symbol: ltgid
+      });
+
       ltgLayer.add(ltglbl);
 
       var row = tbl.insertRow(tbl.rows.length);
       var id = row.insertCell(0);
       var tim = row.insertCell(1);
-      var sig = row.insertCell(2);
-      var lat = row.insertCell(3);
-      var lon = row.insertCell(4);
+      var rt = row.insertCell(2);
+      var cg = row.insertCell(3);
+      var sig = row.insertCell(4);
+      var lat = row.insertCell(5);
+      var lon = row.insertCell(6);
 
       id.innerHTML = ltgPoints[pt]["id"];
       tim.innerHTML = ltgPoints[pt]["time"];
+      rt.innerHTML = ltgPoints[pt]["risetime"];
+      cg.innerHTML = ltgPoints[pt]["cg"];
       sig.innerHTML = ltgPoints[pt]["signal"];
       lat.innerHTML = ltgPoints[pt]["lat"].toFixed(4);
       lon.innerHTML = ltgPoints[pt]["lon"].toFixed(4);
