@@ -3324,9 +3324,10 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
           lat: feature.geometry.latitude,
           lon: feature.geometry.longitude,
           signal: attributes.AMPLITUDE,
-          smin: attributes.ELL_SMIN,
-          smaj: attributes.ELL_SMAJ,
-          angle: attributes.ELL_ANGLE,
+          smin: attributes.ELL_SMIN * 1000,
+          smaj: attributes.ELL_SMAJ * 1000,
+          angle: degree2Radium(attributes.ELL_ANGLE),
+          angledeg: attributes.ELL_ANGLE,
           cg: attributes.CloudToGround_Indicator,
           risetime: attributes.Waveform_RiseTime,
           peaktozero: attributes.Waveform_PeakToZero,
@@ -3839,24 +3840,62 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
     return rad * (180 / Math.PI);
   };
 
-  const getPointsForEllipse = (lat1, lon1, xaxis, yaxis, rotation) => {
-    //axis distance in km
-    var rEarth = 9000; //# Earth's average radius in km, actual is closer to 6378.137
-    var rXaxis = confidenceEllipseMultiplier * xaxis / 10 / rEarth; // /1000 converts meters to km, scaled for confidence (1 = 50%, 1.82=90%, 2.57=99%)
-    var rYaxis = confidenceEllipseMultiplier * yaxis / 10 / rEarth; //that shall be km distance, just use xaxis/yaxis at line 44, 45 if you want to measure by dms
 
-    var rRotation = rotation;
-    var polygonRings = [];
-    for (var i = 0; i <= 360; i += 10) {
-      var t = degree2Radium(i); // # ellipse math ref
-      var x = rXaxis * Math.cos(t); // # ellipse math
-      var y = rYaxis * Math.sin(t); // # ellipse math
-      var rot_x = lon1 + x * Math.cos(rRotation) - y * Math.sin(rRotation); // # rotate/transpose ellipse
-      var rot_y = lat1 + y * Math.cos(rRotation) + x * Math.sin(rRotation); // # rotate/transpose ellipse
-      polygonRings.push([rot_x, rot_y]);
-    }
-    return polygonRings;
-  };
+  //TODO: verify this works with VAPI.
+  function getPointsForEllipse(latitude, longitude, semimajor, semiminor, rotation, numPoints = 36) {
+      const toRadians = angle => angle * Math.PI / 180;
+      const toDegrees = rad => rad * 180 / Math.PI;
+
+      const earthRadius = 6378137; // in meters
+      const rotationRad = toRadians(rotation);
+
+      const vertices = [];
+
+      for (let i = 0; i < numPoints ; i++) {
+          const theta = 2 * Math.PI * i / numPoints;
+          const x = semimajor * Math.cos(theta);
+          const y = semiminor * Math.sin(theta);
+
+          // Rotate the point
+          const xr = x * Math.cos(rotationRad) + y * Math.sin(rotationRad);
+          const yr = -x * Math.sin(rotationRad) + y * Math.cos(rotationRad);
+
+          // Convert meters to degrees
+          //rotate 90deg clockwise
+          const dLat = -xr / earthRadius;
+          const dLon = yr / (earthRadius * Math.cos(toRadians(latitude)));
+
+          const lat = latitude + toDegrees(dLat);
+          const lon = longitude + toDegrees(dLon);
+          vertices.push([lon, lat]);
+          //const t=theta;
+          //vertices.push({ i, t, x, y, lat, lon });
+      }
+
+      return vertices;
+  }
+
+
+
+
+  // const getPointsForEllipse = (lat1, lon1, xaxis, yaxis, rotation) => {
+  //   //axis distance in km
+  //   var rEarth = 6378; //# Earth's average radius in km, actual is closer to 6378.137
+  //   var rXaxis = confidenceEllipseMultiplier * xaxis / 10 / rEarth; // /1000 converts meters to km, scaled for confidence (1 = 50%, 1.82=90%, 2.57=99%)
+  //   var rYaxis = confidenceEllipseMultiplier * yaxis / 10 / rEarth; //that shall be km distance, just use xaxis/yaxis at line 44, 45 if you want to measure by dms
+
+  //   var rRotation = rotation;
+  //   var polygonRings = [];
+  //   for (var i = 0; i <= 360; i += 10) {
+  //     var t = degree2Radium(i); // # ellipse math ref
+  //     var x = rXaxis * Math.cos(t); // # ellipse math
+  //     var y = rYaxis * Math.sin(t); // # ellipse math
+  //     var rot_x = lon1 + x * Math.cos(rRotation) - y * Math.sin(rRotation); // # rotate/transpose ellipse
+  //     var rot_y = lat1 + y * Math.cos(rRotation) + x * Math.sin(rRotation); // # rotate/transpose ellipse
+  //     polygonRings.push([rot_x, rot_y]);
+  //   }
+  //   return polygonRings;
+  // };
 
   function plotEvents(events) {
     clearEventsTable();
@@ -4012,7 +4051,7 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
           ltgPoints[pt]["lon"],
           ltgPoints[pt]["smaj"],
           ltgPoints[pt]["smin"],
-          ltgPoints[pt]["angle"]
+          ltgPoints[pt]["angledeg"]
         ),
         spatialReference: { wkid: lightningPlotSpatialReference },
       };
