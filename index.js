@@ -1823,9 +1823,10 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
           }
           return Promise.all(
             resultPages.map(function (resultPageStart) {
-              query.start = resultPageStart;
-              query.num = maxRecordCount - 1;
-              return lineFeatureLayer.queryFeatures(query);
+              const tempQuery = { ...query };
+              tempQuery.start = resultPageStart;
+              tempQuery.num = maxRecordCount - 1;
+              return lineFeatureLayer.queryFeatures(tempQuery);
             })
           );
         })
@@ -3862,8 +3863,8 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
 
           // Convert meters to degrees
           //rotate 90deg clockwise
-          const dLat = -xr / earthRadius;
-          const dLon = yr / (earthRadius * Math.cos(toRadians(latitude)));
+          const dLat = -xr * confidenceEllipseMultiplier / earthRadius;
+          const dLon = yr * confidenceEllipseMultiplier / (earthRadius * Math.cos(toRadians(latitude)));
 
           const lat = latitude + toDegrees(dLat);
           const lon = longitude + toDegrees(dLon);
