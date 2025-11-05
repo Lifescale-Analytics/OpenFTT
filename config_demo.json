@@ -3,7 +3,7 @@
 	"useProxy": false,
 	"proxyURL": "serverIParcgisproxy/proxy.ashx",
 	"baseURL": "servername/server/rest/services",
-	"gsvcURL": "https://arcgis.tail6e5563.ts.net/server/rest/services/Utilities/Geometry/GeometryServer/buffer",
+	"gsvcURL": "https://utility.arcgisonline.com/arcgis/rest/services/Geometry/GeometryServer",
 	"txdurl1": "serverIParcgisproxy/proxy.ashx?https://txd.vaisala.com/txd100/xml",
 	"txdurl": "serverIPOpenFTT/demo.xml",
 	"integratorenabled" : false,
@@ -11,10 +11,10 @@
 	"integratorbboxurl" : "serverIParcgisproxy/proxy.ashx?https://ltg.vaisala.com/realtime/merge/api/v1/ltgs/radius?",
 	"integratorpolyurl" : "serverIParcgisproxy/proxy.ashx?https://ltg.viasala.com/realtime/merge/api/v1/ltgs/geometry?",
 	"integratorpolyurl" : "serverIPFTT/lightning.json?",
-	"confidenceEllipseMultiplier": "1",
+	"confidenceEllipseMultiplier": "2.57",
 	"locatorURL": "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer",
 	"fiURL": "serverIP/fiapi/default.aspx?",
-	"mapServerURL": "baseURL/FTTTVAWM1/Mapserver/",
+	"mapServerURL": "baseURL/FTT3857/Mapserver/",
 	"eventsURL": "http://<<events URL and port info>>",
 	"eventsRefreshInterval": "60",
 	"enableEventsTab": true,
@@ -23,23 +23,23 @@
 	"bufferSpatialReference":"3857",
 	"lightningBufferSpatialReference":"3857",
 	"lightningPlotSpatialReference":"4326",
-	"printServiceURL": "https://arcgis.tail6e5563.ts.net/server/rest/services/Utilities/PrintingTools/GPServer/Export%20Web%20Map%20Task",
+	"printServiceURL": "https://utility.arcgisonline.com/arcgis/rest/services/Utilities/PrintingTools/GPServer/Export%20Web%20Map%20Task",
 	"apiKey":"",
 	"oauthEnabled": false,
 	"portalURL": "https://www.arcgis.com/",
 	"appId": "bwpKav7W3Ta9bToC",
-	"stationLayerID": "6",
-	"lineLayerID": "7",
-	"structureLayerID": "5",
+	"stationLayerID": "1",
+	"lineLayerID": "4",
+	"structureLayerID": "2",
 	"switchLayerID": "0",
-	"fiLayerID": "0",
+	"fiLayerID": "3",
 	"lightningIsLayer": true,
-	"lightningLayerID": "0",
+	"lightningLayerID": "5",
 	"lightningEllipseIsLayer": false,
-	"lightningEllipseLayerID": "0",
+	"lightningEllipseLayerID": "6",
 	"maxRecordCount": "2000",
 	"faultLocID": "0",
-	"initialExtent": "{ \"xmin\": -91.184, \"ymin\": 33.000, \"xmax\": -81.341, \"ymax\": 38.609, \"padding\": { \"right\": 400}, \"spatialReference\": 4326 }",
+	"initialExtent": "{ \"xmin\": -87.1, \"ymin\": 30.8, \"xmax\": -78.6, \"ymax\": 35, \"padding\": { \"right\": 400}, \"spatialReference\": 4326 }",
 	"aovThreshold": "0.5",
 	"aovPopuptitle": "Area of Vulnerability: {id}",
 	"aov1PopupFields": [{
@@ -120,8 +120,8 @@
 			"label": "Semi Major Axis (m):"
 		},
 		{
-			"fieldName": "angledeg",
-			"label": "Ellipse Angle (deg):"
+			"fieldName": "angle",
+			"label": "Ellipse Angle (rad):"
 		},
 		{
 			"fieldName": "cg",
@@ -224,7 +224,7 @@
 			"isStatusFeature": false
 		}
 	],
-	"switchEnabled":false,
+	"switchEnabled":true,
 	"switchKeys": [
 		{
 			"name": "ITS_TL_ID"
@@ -241,7 +241,7 @@
 	"txdenabled": false,
 	"lineFields": [
 		{
-			"name": "LINENAME",
+			"name": "ITS_NAME",
 			"isTitle": true,
 			"key": false,
 			"isAttribute": true,
@@ -249,7 +249,7 @@
 			"orderby": true
 		},
 		{
-			"name": "LINENAME",
+			"name": "ITS_ID",
 			"isTitle": false,
 			"key": true,
 			"isAttribute": true,
@@ -260,13 +260,13 @@
 	],
 	"stationFields": [
 		{
-			"name": "ASSET_DESC",
+			"name": "NAME",
 			"isTitle": true,
 			"isAttribute": true,
 			"outfield": true
 		},
 		{
-			"name": "ASSET_NO",
+			"name": "ITS_ID",
 			"key": true,
 			"isAttribute": true,
 			"outfield": true
@@ -276,34 +276,33 @@
 	"stationFilterField": "ITS_LINE_ID",
 	"stationRender": "{\"type\":\"simple\",\"symbol\":{\"type\":\"simple-marker\",\"style\":\"square\",\"outline\":{\"color\":[0,92,230,1]},\"size\":6,\"color\":[0,92,230,1]}}",
 	"useStationLabel":true,
-	"stationLabel": "{\"symbol\":{\"type\":\"text\",\"color\":\"black\",\"font\":{\"family\":\"Arial\",\"size\":12}},\"labelPlacement\":\"above-center\",\"labelExpression\":\"[ASSET_DESC]\"}",
+	"stationLabel": "{\"symbol\":{\"type\":\"text\",\"color\":\"black\",\"font\":{\"family\":\"Arial\",\"size\":12}},\"labelPlacement\":\"above-center\",\"labelExpression\":\"[NAME]\"}",
 	"useStructureProximity": true,
 	"structureProximityFt": 3,
 	"structureFields": [
 		{
-			"name": "STR_NO",
+			"name": "OBJECTID_1",
 			"isAttribute":true,
 			"isTitle": true,
 			"outfield":true,
 			"tblHeader": "Structure"
 		},
 		{
-			"name": "SEG_NO",
+			"name": "OWNER",
 			"isAttribute": true,
 			"outfield": true,
-			"tblHeader": "Seg_NO",
-			"key": true
+			"tblHeader": "Owner"
 		},
 		{
-			"name": "STRTYPE",
-			"isAttribute": true,
-			"outfield": true,
-			"tblHeader": "STRTYPE"
+			"name": "OBJECTID",
+			"isAttribute": false,
+			"outfield":true,
+			"key": true
 		}
 	],
 	"structureRender": "{\"type\":\"simple\",\"symbol\":{\"type\":\"simple-marker\",\"style\":\"cross\",\"size\":4}}",
 	"useStructureLabel": false,
-	"structureLabel": "{\"symbol\":{\"type\":\"text\",\"color\":\"black\",\"font\":{\"family\":\"Arial\",\"size\":12}},\"labelPlacement\":\"above-center\",\"labelExpression\":\"[STR_NO]\"}",
+	"structureLabel": "{\"symbol\":{\"type\":\"text\",\"color\":\"black\",\"font\":{\"family\":\"Arial\",\"size\":12}},\"labelPlacement\":\"above-center\",\"labelExpression\":\"[STOMPDB.Structure.STRC_NUM]\"}",
 	"useSpanTolerance": false,
 	"spanTolerance": ".005",
 	"timezone": "America/Chicago",
