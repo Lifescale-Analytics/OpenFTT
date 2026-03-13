@@ -92,6 +92,9 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
   var useSpanTolerance = data.useSpanTolerance;
   var spanTolerance = parseFloat(data.spanTolerance);
   var eventsURL = data.eventsURL.replace("serverIP", serverIP);
+  var eventsAuthURL = data.eventsAuthURL.replace("serverIP", serverIP);
+  var eventsAPIToken = data.eventsAPIToken;
+  var eventsAPIKey = data.eventsAPIKey;
   var eventsRefreshInterval = parseInt(data.eventsRefreshInterval);
   var waveformURL = data.waveformURL.replace("serverIP", serverIP);
   var oauthEnabled = data.oauthEnabled;
@@ -984,7 +987,6 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
 
   function getFIStatusPointsFromAPI(feature) {
     //get list of fi's from gis and loop through them to get status.
-
     var evttime = moment
       .tz(
         document.getElementById("evttime").value,
@@ -1345,10 +1347,41 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
     });
 
     btnLoadEvents.addEventListener("click", async function () {
-      let request = new Request(`${eventsURL}?startdate=${new Date(evtstarttime.value).toISOString()}&enddate=${new Date(evtstoptime.value).toISOString()}`);
-      let response = await fetch(request, {cache: 'no-cache'});  
-      let events = await response.json();
-      plotEvents(events);
+      //determine if this is an XDA url
+      if(eventsURL.indexOf(":8989")> 0){
+        //get auth header
+        const myHeaders = new Headers();
+        const secHeader = btoa(`${eventsAPIKey}:${eventsAPIToken}`);
+        myHeaders.append("Authorization", "XDA-API " + secHeader);
+
+        //get auth security token
+        const requestOptions = {
+          method: "GET",
+          headers: myHeaders,
+          redirect: "follow"
+        }
+
+        fetch(eventsAuthURL,requestOptions)
+        .then((response) => response.text())
+        .then((result) => {
+          myHeaders.append("X-GSF-Verify", result);
+          let url = `${eventsURL}?startdate=${new Date(evtstarttime.value).toISOString()}&enddate=${new Date(evtstoptime.value).toISOString()}`;
+
+          //get event data
+          fetch(url, requestOptions)
+          .then((response) => response.json())
+          .then((events) => plotEvents(events))
+
+        }).catch((error) => console.error(error));
+
+      } else {
+        let request = new Request(`${eventsURL}?startdate=${new Date(evtstarttime.value).toISOString()}&enddate=${new Date(evtstoptime.value).toISOString()}`);
+        let response = await fetch(request, {cache: 'no-cache'});  
+        let events = await response.json();
+        plotEvents(events);
+
+      }
+
     });
 
     chkEventDefault.addEventListener("click", function() {
@@ -3932,7 +3965,7 @@ import * as intersectionOperator from "https://js.arcgis.com/4.33/@arcgis/core/g
         let substation = eventToPlot[2].textContent;
         let distance = eventToPlot[3].textContent;
 		let lineid = eventToPlot[5].textContent;
-        document.getElementById("evttime").value =  moment(new Date(events[evt]["event_datetime"]).toISOString()).tz(timezone).format("MM/DD/YYYY HH:mm:ss.SSS");
+        document.getElementById("evttime").value =  moment(new Date(datetime).toISOString()).format("MM/DD/YYYY HH:mm:ss.SSS");
         
         let lineSelect = document.getElementById("lineSelect")
         for (let i = 0; i < lineSelect.options.length; i++) {
