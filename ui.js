@@ -142,7 +142,7 @@ function getInfoDivMinHeight(){
           break;
         case 5:
           //legend
-          minHeight=223;
+          minHeight=510;
           break;
       }
     }
