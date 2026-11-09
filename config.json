@@ -10,7 +10,7 @@
 	"integratorapiauthurl" : "serverIParcgisproxy/proxy.ashx?https://ltg-auth.vaisala.com/api/v1/auth/token?application=ltg-api&username=GeoTrans&password=Va!s@2023JAN0221",
 	"integratorbboxurl" : "serverIParcgisproxy/proxy.ashx?https://ltg.vaisala.com/realtime/merge/api/v1/ltgs/radius?",
 	"integratorpolyurl" : "serverIParcgisproxy/proxy.ashx?https://ltg.viasala.com/realtime/merge/api/v1/ltgs/geometry?",
-	"integratorpolyurl" : "serverIPFTT/lightning.json?",
+	"integratorpolyurldemo" : "serverIPFTT/lightning.json?",
 	"confidenceEllipseMultiplier": "1",
 	"locatorURL": "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer",
 	"fiURL": "serverIP/fiapi/default.aspx?",
