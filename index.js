@@ -1738,18 +1738,20 @@ function getOutput(type = 'jpg') {
 
       //download file
       const element = document.getElementById("output");
+      element.setAttribute("style", "display: none;");
 
       if (element.childElementCount > 0) {
         element.removeChild(element.firstChild);
       }
 
-
-      const el2 = document.createElement("a");
-      el2.setAttribute("id", "output" + type);
+      let el2;
 
       if (type == 'jpg') {
+        el2 = document.createElement("a");
         el2.setAttribute("href", dataUrl);
       } else if (type === 'json') {
+        el2 = document.createElement("div");
+
         const tableToObjects = (tbl) => {
           const keys = Array.from(tbl.tHead.rows[0].cells).map(c => c.innerText.trim());
           return Array.from(tbl.tBodies[0].rows).map(r =>
@@ -1764,7 +1766,6 @@ function getOutput(type = 'jpg') {
           nearestlightning: tableToObjects(ltginfo),
           img: dataUrl,
         };
-        console.log(outputData);
         el2.innerHTML = JSON.stringify(outputData);
       }
 
@@ -1777,6 +1778,7 @@ function getOutput(type = 'jpg') {
       //el2.setAttribute("download", filename);
       //const text = document.createTextNode("download");
       //el2.appendChild(text);
+      el2.setAttribute("id", "output" + type);
       element.appendChild(el2);
     });
   }, 5000);
